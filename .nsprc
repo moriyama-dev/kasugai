@@ -1,3 +1,12 @@
 {
-    "GHSA-vfj7-8cjw-p6xm": "no fix yet. the vulnerability is debated."
+    "GHSA-3g3m-2fjr-6pw4": {
+        "active": true,
+        "notes": "glob: only expands Include patterns of the user's own ssh_config, no AbortSignal use. Fixed release (14.0.4) is less than two weeks old; upgrade after it has aged.",
+        "expiry": "2026-12-06"
+    },
+    "GHSA-g3hv-75wg-m249": {
+        "active": true,
+        "notes": "minimatch: reached through glob, eslint and vsce with trusted patterns only. Revisit together with the glob upgrade.",
+        "expiry": "2026-12-06"
+    }
 }

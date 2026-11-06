@@ -2,9 +2,9 @@ import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 import SSHConfig, { Directive, Line, Section } from 'ssh-config';
-import * as vscode from 'vscode';
 import { exists as fileExists, normalizeToSlash, untildify } from '../common/files';
 import { isWindows } from '../common/platform';
+import { getSetting } from '../common/config';
 import { glob } from 'glob';
 
 export type HostConfiguration = {
@@ -31,7 +31,7 @@ const systemSSHConfig = isWindows ? path.resolve(process.env.ALLUSERSPROFILE || 
 const defaultSSHConfigPath = path.resolve(os.homedir(), '.ssh/config');
 
 export function getSSHConfigPath() {
-    const sshConfigPath = vscode.workspace.getConfiguration('remote.SSH').get<string>('configFile');
+    const sshConfigPath = getSetting<string | undefined>('configFile', undefined);
     return sshConfigPath ? untildify(sshConfigPath) : defaultSSHConfigPath;
 }
 

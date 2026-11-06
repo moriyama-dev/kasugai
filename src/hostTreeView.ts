@@ -3,6 +3,7 @@ import * as path from 'path';
 import SSHConfiguration, { getSSHConfigPath } from './ssh/sshConfig';
 import { RemoteLocationHistory } from './remoteLocationHistory';
 import { Disposable } from './common/disposable';
+import { affectsSetting } from './common/config';
 import { addNewHost, openRemoteSSHLocationWindow, openRemoteSSHWindow, openSSHConfigFile } from './commands';
 import SSHDestination from './ssh/sshDestination';
 
@@ -34,17 +35,17 @@ export class HostTreeDataProvider extends Disposable implements vscode.TreeDataP
     ) {
         super();
 
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.add', () => addNewHost()));
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.configure', () => openSSHConfigFile()));
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.refresh', () => this.refresh()));
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.emptyWindowInNewWindow', e => this.openRemoteSSHWindow(e, false)));
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.emptyWindowInCurrentWindow', e => this.openRemoteSSHWindow(e, true)));
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.reopenFolderInNewWindow', e => this.openRemoteSSHLocationWindow(e, false)));
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.reopenFolderInCurrentWindow', e => this.openRemoteSSHLocationWindow(e, true)));
-        this._register(vscode.commands.registerCommand('openremotessh.explorer.deleteFolderHistoryItem', e => this.deleteHostLocation(e)));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.add', () => addNewHost()));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.configure', () => openSSHConfigFile()));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.refresh', () => this.refresh()));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.emptyWindowInNewWindow', e => this.openRemoteSSHWindow(e, false)));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.emptyWindowInCurrentWindow', e => this.openRemoteSSHWindow(e, true)));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.reopenFolderInNewWindow', e => this.openRemoteSSHLocationWindow(e, false)));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.reopenFolderInCurrentWindow', e => this.openRemoteSSHLocationWindow(e, true)));
+        this._register(vscode.commands.registerCommand('kasugai.explorer.deleteFolderHistoryItem', e => this.deleteHostLocation(e)));
 
         this._register(vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('remote.SSH.configFile')) {
+            if (affectsSetting(e, 'configFile')) {
                 this.refresh();
             }
         }));
@@ -61,14 +62,14 @@ export class HostTreeDataProvider extends Disposable implements vscode.TreeDataP
             const treeItem = new vscode.TreeItem(label);
             treeItem.description = path.posix.dirname(element.path);
             treeItem.iconPath = new vscode.ThemeIcon('folder');
-            treeItem.contextValue = 'openremotessh.explorer.folder';
+            treeItem.contextValue = 'kasugai.explorer.folder';
             return treeItem;
         }
 
         const treeItem = new vscode.TreeItem(element.hostname);
         treeItem.collapsibleState = element.locations.length ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None;
         treeItem.iconPath = new vscode.ThemeIcon('vm');
-        treeItem.contextValue = 'openremotessh.explorer.host';
+        treeItem.contextValue = 'kasugai.explorer.host';
         return treeItem;
     }
 

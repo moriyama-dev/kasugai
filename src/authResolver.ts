@@ -9,8 +9,9 @@ import { SocksClient, SocksClientOptions } from 'socks';
 import * as vscode from 'vscode';
 import * as ssh2 from 'ssh2';
 import { Log } from './common/logger';
+import { getSetting } from './common/config';
 import SSHDestination from './ssh/sshDestination';
-import SSHConnection, { SSHTunnelConfig } from './ssh/sshConnection';
+import SSHConnection, { AutoReconnectOptions, SSHTunnelConfig } from './ssh/sshConnection';
 import { loadKnownHosts, matchHostKey, appendHostKey, replaceHostKey, removeHostFromEntry, findConflictingEntries, keyFingerprint, keyTypeOf, KnownHosts, KnownHostsEntry, KnownHostsFilesConfig } from './ssh/knownHosts';
 import NativeSSHConnection, { isGssapiAuthenticationRequested } from './ssh/nativeClient';
 import type { SSHClient, SSHExecChannel } from './ssh/sshClient';
@@ -29,7 +30,7 @@ const PASSPHRASE_RETRY_COUNT = 3;
 
 export type HostVerificationPolicy = 'accept' | 'ask' | 'reject';
 
-export const REMOTE_SSH_AUTHORITY = 'ssh-remote';
+export const REMOTE_SSH_AUTHORITY = 'kasugai-ssh';
 
 export function getRemoteAuthority(host: string) {
     return `${REMOTE_SSH_AUTHORITY}+${host}`;
@@ -204,6 +205,36 @@ export function resolveProxyJumps(
     return hops;
 }
 
+export type ConnectionTuning = {
+    keepaliveInterval: number;
+    keepaliveCountMax: number;
+    autoReconnect: AutoReconnectOptions | undefined;
+};
+
+/**
+ * Keepalive and reconnect parameters for one host. `ServerAliveInterval` and
+ * `ServerAliveCountMax` from ssh_config win over the Kasugai defaults, the same
+ * way they would for the ssh command line client.
+ */
+export function getConnectionTuning(hostConfig: Record<string, string>): ConnectionTuning {
+    const configured = (name: string) => {
+        const value = parseInt(hostConfig[name] ?? '', 10);
+        return Number.isFinite(value) ? value : undefined;
+    };
+    const aliveInterval = configured('ServerAliveInterval') ?? getSetting<number>('keepAliveInterval', 15);
+    const aliveCountMax = configured('ServerAliveCountMax') ?? getSetting<number>('keepAliveCountMax', 3);
+    const reconnectSeconds = getSetting<number>('reconnectTimeout', 3600);
+
+    return {
+        // 0 disables keepalives, like ServerAliveInterval 0
+        keepaliveInterval: Math.max(0, aliveInterval) * 1000,
+        keepaliveCountMax: Math.max(1, aliveCountMax),
+        autoReconnect: reconnectSeconds > 0
+            ? { maxDurationMs: reconnectSeconds * 1000, initialDelayMs: 500, maxDelayMs: 15_000 }
+            : undefined,
+    };
+}
+
 export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode.Disposable {
 
     private proxyConnections: SSHConnection[] = [];
@@ -216,6 +247,11 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
     private tunnels: TunnelInfo[] = [];
 
     private labelFormatterDisposable: vscode.Disposable | undefined;
+    private connectionKey: string | undefined;
+    /** Private keys parsed during this window, kept in memory only. */
+    private readonly unlockedKeys = new Map<string, ParsedKey>();
+    private statusItem: vscode.StatusBarItem | undefined;
+    private statusHideTimer: NodeJS.Timeout | undefined;
 
     constructor(
         readonly context: vscode.ExtensionContext,
@@ -291,22 +327,22 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
     }
 
     private async connect(destination: SSHDestination, sshconfig: SSHConfiguration, useNativeClient: boolean): Promise<vscode.ResolverResult> {
-        const remoteSSHconfig = vscode.workspace.getConfiguration('remote.SSH');
-        const enableDynamicForwarding = remoteSSHconfig.get<boolean>('enableDynamicForwarding', true)!;
-        const enableAgentForwarding = remoteSSHconfig.get<boolean>('enableAgentForwarding', true)!;
-        const serverDownloadUrlTemplate = remoteSSHconfig.get<string>('serverDownloadUrlTemplate');
-        const serverVersion = remoteSSHconfig.get<ServerVersion>('serverVersion', 'match');
-        const defaultExtensions = remoteSSHconfig.get<string[]>('defaultExtensions', []);
-        const remotePlatformMap = remoteSSHconfig.get<Record<string, RemotePlatform>>('remotePlatform', {});
-        const remoteServerListenOnSocket = remoteSSHconfig.get<boolean>('remoteServerListenOnSocket', false)!;
-        const connectTimeout = remoteSSHconfig.get<number>('connectTimeout', 60)!;
-        const serverInstallPathMap = remoteSSHconfig.get<Record<string, string>>('serverInstallPath', {});
-        const verifyUnknownHosts = remoteSSHconfig.get<HostVerificationPolicy>('verifyUnknownHosts', 'ask')!;
-        const verifyKnownHosts = remoteSSHconfig.get<HostVerificationPolicy>('verifyKnownHosts', 'reject')!;
+        const enableDynamicForwarding = getSetting<boolean>('enableDynamicForwarding', true);
+        const enableAgentForwarding = getSetting<boolean>('enableAgentForwarding', true);
+        const serverDownloadUrlTemplate = getSetting<string | undefined>('serverDownloadUrlTemplate', undefined);
+        const serverVersion = getSetting<ServerVersion>('serverVersion', 'match');
+        const defaultExtensions = getSetting<string[]>('defaultExtensions', []);
+        const remotePlatformMap = getSetting<Record<string, RemotePlatform>>('remotePlatform', {});
+        const remoteServerListenOnSocket = getSetting<boolean>('remoteServerListenOnSocket', false);
+        const connectTimeout = getSetting<number>('connectTimeout', 60);
+        const serverInstallPathMap = getSetting<Record<string, string>>('serverInstallPath', {});
+        const verifyUnknownHosts = getSetting<HostVerificationPolicy>('verifyUnknownHosts', 'ask');
+        const verifyKnownHosts = getSetting<HostVerificationPolicy>('verifyKnownHosts', 'reject');
         const sshHostConfig = sshconfig.getHostConfiguration(destination.hostname);
         const sshHostName = sshHostConfig['HostName'] ? SSHConfiguration.interpolate(sshHostConfig['HostName'], { '%': '%', 'h': destination.hostname }) : destination.hostname;
         const sshUser = sshHostConfig['User'] || destination.user || os.userInfo().username || ''; // https://github.com/openssh/openssh-portable/blob/5ec5504f1d328d5bfa64280cd617c3efec4f78f3/sshconnect.c#L1561-L1562
         const sshPort = sshHostConfig['Port'] ? parseInt(sshHostConfig['Port'], 10) : (destination.port || 22);
+        const connectionTuning = getConnectionTuning(sshHostConfig);
 
         const valuesToInterpolate = {
             '%': '%',
@@ -344,9 +380,31 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
             }
         }
 
-        let proxyStream: ssh2.ClientChannel | stream.Duplex | undefined;
+        // A window reload or a VS Code-side reconnect resolves the same host
+        // again. If our SSH session to it is still up, skip the handshake and
+        // authentication and go straight to (re)checking the server.
+        const connectionKey = `${useNativeClient ? 'native' : 'ssh2'}|${sshUser}@${sshHostName}:${sshPort}|${destination.hostname}`;
+        const reuseConnection = !useNativeClient
+            && this.sshConnection instanceof SSHConnection
+            && this.sshConnection.isConnected
+            && this.connectionKey === connectionKey;
 
-        if (!useNativeClient) {
+        if (reuseConnection) {
+            this.logger.info(`Reusing the open SSH connection to ${destination.hostname}`);
+            disposeAll(this.tunnels);
+            this.tunnels = [];
+            if (this.socksTunnel) {
+                await this.sshConnection!.closeTunnel(this.socksTunnel.name);
+                this.socksTunnel = undefined;
+            }
+        } else {
+            this.disposeConnectionState();
+        }
+        this.connectionKey = connectionKey;
+
+        if (reuseConnection) {
+            // Nothing to build
+        } else if (!useNativeClient) {
             const preferredAuthentications = sshHostConfig['PreferredAuthentications'] ? sshHostConfig['PreferredAuthentications'].split(',').map(s => s.trim()) : ['publickey', 'password', 'keyboard-interactive'];
 
             const identityFiles: string[] = (sshHostConfig['IdentityFile']?.map(f => untildify(interpolatePath(f)))) || [];
@@ -354,6 +412,10 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
             const identityKeys = await gatherIdentityFiles(identityFiles, this.sshAgentSock, identitiesOnly, this.logger);
 
             const agent = agentForward && this.sshAgentSock ? new ssh2.OpenSSHAgent(this.sshAgentSock) : undefined;
+
+            // Each hop gets a factory for its transport instead of a ready-made
+            // stream, so the whole chain can be rebuilt after a network drop.
+            let sockFactory: (() => Promise<stream.Duplex | undefined>) | undefined;
 
             // Create proxy jump connections if any
             if (sshHostConfig['ProxyJump']) {
@@ -373,26 +435,33 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                     const proxyIdentityFiles: string[] = (proxyHostConfig['IdentityFile']?.map(f => untildify(interpolatePath(f)))) || [];
                     const proxyIdentitiesOnly = (proxyHostConfig['IdentitiesOnly'] || 'no').toLowerCase() === 'yes';
                     const proxyIdentityKeys = await gatherIdentityFiles(proxyIdentityFiles, this.sshAgentSock, proxyIdentitiesOnly, this.logger);
+                    const proxyTuning = getConnectionTuning(proxyHostConfig);
 
-                    const proxyAuthHandler = this.getSSHAuthHandler(proxyUser, proxyHostName, proxyIdentityKeys, preferredAuthentications);
+                    const previousHop = sockFactory;
                     const proxyConnection = new SSHConnection({
-                        host: !proxyStream ? proxyHostName : undefined,
-                        port: !proxyStream ? proxyPort : undefined,
-                        sock: proxyStream,
+                        host: !previousHop ? proxyHostName : undefined,
+                        port: !previousHop ? proxyPort : undefined,
+                        sockFactory: previousHop,
                         username: proxyUser,
                         readyTimeout: connectTimeout * 1000,
+                        keepaliveInterval: proxyTuning.keepaliveInterval,
+                        keepaliveCountMax: proxyTuning.keepaliveCountMax,
                         strictVendor: false,
                         agentForward: proxyAgentForward,
                         agent: proxyAgent,
                         hostVerifier: this.createHostVerifier(proxyHostName, proxyPort, proxyHostConfig, verifyUnknownHosts, verifyKnownHosts),
-                        authHandler: (arg0, arg1, arg2) => (proxyAuthHandler(arg0, arg1, arg2), undefined)
+                        authHandlerFactory: () => {
+                            const handler = this.getSSHAuthHandler(proxyUser, proxyHostName, proxyIdentityKeys, preferredAuthentications);
+                            return (arg0, arg1, arg2) => (handler(arg0, arg1, arg2), undefined);
+                        },
                     });
                     this.proxyConnections.push(proxyConnection);
 
                     const nextProxyJump = i < proxyJumps.length - 1 ? proxyJumps[i + 1] : undefined;
                     const destIP = nextProxyJump ? (nextProxyJump[1]['HostName'] || nextProxyJump[0].hostname) : sshHostName;
                     const destPort = nextProxyJump ? getProxyJumpPort(nextProxyJump[0], nextProxyJump[1]) : sshPort;
-                    proxyStream = await proxyConnection.forwardOut('127.0.0.1', 0, destIP, destPort);
+                    // forwardOut() reconnects this hop first when it has dropped
+                    sockFactory = () => proxyConnection.forwardOut('127.0.0.1', 0, destIP, destPort);
                 }
             } else if (sshHostConfig['ProxyCommand']) {
                 const proxyCommandValue: string | string[] = sshHostConfig['ProxyCommand'];
@@ -427,28 +496,47 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                     assertShellSafeProxyCommand(proxyCommandLine, proxyCommandValues);
                 }
 
-                this.logger.trace(`Spawning ProxyCommand: ${[proxyCommand, ...proxyArgs].join(' ')}`);
+                sockFactory = async () => {
+                    // A new SSH session needs a new ProxyCommand process
+                    this.proxyCommandProcess?.kill();
+                    this.logger.trace(`Spawning ProxyCommand: ${[proxyCommand, ...proxyArgs].join(' ')}`);
 
-                const child = cp.spawn(proxyCommand, proxyArgs, options);
-                proxyStream = stream.Duplex.from({ readable: child.stdout, writable: child.stdin });
-                this.proxyCommandProcess = child;
+                    const child = cp.spawn(proxyCommand, proxyArgs, options);
+                    const duplex = stream.Duplex.from({ readable: child.stdout, writable: child.stdin });
+                    // Without these listeners a missing binary (ENOENT) or a
+                    // dying proxy would surface as an uncaught exception
+                    child.on('error', (err) => {
+                        this.logger.error(`ProxyCommand failed`, err);
+                        duplex.destroy(err);
+                    });
+                    child.stderr.on('data', (data: Buffer) => this.logger.trace(`ProxyCommand stderr: ${data.toString().trimEnd()}`));
+                    duplex.on('error', () => { /* reported through the SSH client */ });
+                    this.proxyCommandProcess = child;
+                    return duplex;
+                };
             }
 
-            // Create final shh connection
-            const sshAuthHandler = this.getSSHAuthHandler(sshUser, sshHostName, identityKeys, preferredAuthentications);
-
-            this.sshConnection = new SSHConnection({
-                host: !proxyStream ? sshHostName : undefined,
-                port: !proxyStream ? sshPort : undefined,
-                sock: proxyStream,
+            // Create final ssh connection
+            const sshConnection = new SSHConnection({
+                host: !sockFactory ? sshHostName : undefined,
+                port: !sockFactory ? sshPort : undefined,
+                sockFactory,
                 username: sshUser,
                 readyTimeout: connectTimeout * 1000,
+                keepaliveInterval: connectionTuning.keepaliveInterval,
+                keepaliveCountMax: connectionTuning.keepaliveCountMax,
                 strictVendor: false,
                 agentForward,
                 agent,
                 hostVerifier: this.createHostVerifier(sshHostName, sshPort, sshHostConfig, verifyUnknownHosts, verifyKnownHosts),
-                authHandler: (arg0, arg1, arg2) => (sshAuthHandler(arg0, arg1, arg2), undefined),
+                authHandlerFactory: () => {
+                    const handler = this.getSSHAuthHandler(sshUser, sshHostName, identityKeys, preferredAuthentications);
+                    return (arg0, arg1, arg2) => (handler(arg0, arg1, arg2), undefined);
+                },
+                autoReconnect: connectionTuning.autoReconnect,
             });
+            this.watchConnection(sshConnection, destination.hostname, agentForward);
+            this.sshConnection = sshConnection;
         } else {
             this.logger.info(`GSSAPI authentication requested for ${destination.hostname}; connecting via the local SSH client`);
             this.sshConnection = new NativeSSHConnection({
@@ -461,7 +549,9 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
             });
         }
 
-        await this.sshConnection.connect();
+        const connectStarted = Date.now();
+        await this.sshConnection!.connect();
+        this.logger.info(`SSH connection to ${destination.hostname} ready in ${Date.now() - connectStarted}ms`);
 
         const envVariables: Record<string, string | null> = {};
         if (agentForward) {
@@ -486,7 +576,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         const customInstallPath = findServerInstallPath(destination.hostname, serverInstallPathMap);
 
         const installResult = await installCodeServer(
-            this.sshConnection,
+            this.sshConnection!,
             serverDownloadUrlTemplate,
             serverVersion,
             defaultExtensions,
@@ -539,6 +629,81 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         return resolvedResult;
     }
 
+    /**
+     * Report the life of the SSH session (drops, reconnect attempts, recovery)
+     * in the log and the status bar, and restore what a new session loses.
+     */
+    private watchConnection(connection: SSHConnection, hostname: string, agentForward: boolean) {
+        connection.on('ssh:dropped', (_conn: SSHConnection, payload?: { err?: Error | null }) => {
+            this.logger.info(`SSH connection to ${hostname} dropped${payload?.err ? `: ${payload.err.message}` : ''}`);
+            this.showStatus(`$(sync~spin) Kasugai: reconnecting to ${hostname}…`, `The SSH connection to ${hostname} dropped. Kasugai is reconnecting automatically.`);
+        });
+        connection.on('ssh:reconnecting', (_conn: SSHConnection, payload?: { attempt: number; delay: number }) => {
+            this.logger.info(`Reconnecting to ${hostname} in ${payload?.delay}ms (attempt #${payload?.attempt})`);
+        });
+        connection.on('ssh:reconnected', (_conn: SSHConnection, payload?: { attempt: number }) => {
+            this.logger.info(`Reconnected to ${hostname} (attempt #${payload?.attempt})`);
+            this.showStatus(`$(check) Kasugai: reconnected to ${hostname}`, undefined, 5000);
+            if (agentForward && this.sshConnection === connection) {
+                // The forwarded agent socket belongs to the old session
+                this.openAgentForwardSession().then((sock) => {
+                    if (sock) {
+                        this.context.environmentVariableCollection.replace('SSH_AUTH_SOCK', sock);
+                    }
+                }, (e) => this.logger.error(`Failed to restore agent forwarding`, e));
+            }
+        });
+        connection.on('ssh:gaveup', (_conn: SSHConnection, payload?: { attempts: number; err?: Error }) => {
+            this.logger.error(`Gave up reconnecting to ${hostname} after ${payload?.attempts} attempts${payload?.err ? `: ${payload.err.message}` : ''}`);
+            this.showStatus(`$(error) Kasugai: disconnected from ${hostname}`, 'Click to reload the window and connect again.', undefined, 'workbench.action.reloadWindow');
+        });
+        connection.on('ssh:error', (_conn: SSHConnection, payload?: { err?: Error }) => {
+            this.logger.trace(`SSH client error for ${hostname}: ${payload?.err?.message}`);
+        });
+    }
+
+    private showStatus(text: string, tooltip?: string, hideAfterMs?: number, command?: string) {
+        if (!this.statusItem) {
+            const create = vscode.window.createStatusBarItem as typeof vscode.window.createStatusBarItem | undefined;
+            if (!create) {
+                return;
+            }
+            this.statusItem = create('kasugai.connection', vscode.StatusBarAlignment.Left, 10000);
+            this.statusItem.name = 'Kasugai connection';
+        }
+        if (this.statusHideTimer) {
+            clearTimeout(this.statusHideTimer);
+            this.statusHideTimer = undefined;
+        }
+        this.statusItem.text = text;
+        this.statusItem.tooltip = tooltip;
+        this.statusItem.command = command ?? 'kasugai.showLog';
+        this.statusItem.show();
+        if (hideAfterMs) {
+            this.statusHideTimer = setTimeout(() => this.statusItem?.hide(), hideAfterMs);
+        }
+    }
+
+    /** Tear down everything a previous resolve() set up. */
+    private disposeConnectionState() {
+        disposeAll(this.tunnels);
+        this.tunnels = [];
+        this.agentForwardSession?.close();
+        this.agentForwardSession = undefined;
+        if (this.socksTunnel && this.sshConnection) {
+            void this.sshConnection.closeTunnel(this.socksTunnel.name);
+        }
+        this.socksTunnel = undefined;
+        this.sshConnection?.close();
+        this.sshConnection = undefined;
+        for (const proxy of this.proxyConnections) {
+            proxy.close();
+        }
+        this.proxyConnections = [];
+        this.proxyCommandProcess?.kill();
+        this.proxyCommandProcess = undefined;
+    }
+
     // @types/ssh2 predates the current runtime and types the key as a string;
     // without `hostHash` set, ssh2 actually passes the raw key blob and
     // supports an async verify callback.
@@ -583,7 +748,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                     return true;
                 }
                 if (unknownPolicy === 'reject') {
-                    this.logger.error(`Rejecting unknown ${keyType} host key for ${hostname} (${fingerprint}) — remote.SSH.verifyUnknownHosts is 'reject'`);
+                    this.logger.error(`Rejecting unknown ${keyType} host key for ${hostname} (${fingerprint}) — kasugai.verifyUnknownHosts is 'reject'`);
                     return false;
                 }
 
@@ -851,6 +1016,17 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                     }
                 }
 
+                // Keys unlocked earlier in this window: a reconnect must not
+                // ask for the passphrase again
+                const unlocked = this.unlockedKeys.get(identityKey.filename);
+                if (unlocked) {
+                    return callback({
+                        type: 'publickey',
+                        username: sshUser,
+                        key: unlocked
+                    });
+                }
+
                 if (!await fileExists(identityKey.filename)) {
                     // Try next identity file
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -881,6 +1057,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                 }
 
                 const key = Array.isArray(result) ? result[0] : result;
+                this.unlockedKeys.set(identityKey.filename, key);
                 return callback({
                     type: 'publickey',
                     username: sshUser,
@@ -940,16 +1117,11 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
     }
 
     dispose() {
-        disposeAll(this.tunnels);
-        this.agentForwardSession?.close();
-        this.agentForwardSession = undefined;
-        // If there's proxy connections then just close the parent connection
-        if (this.proxyConnections.length) {
-            this.proxyConnections[0].close();
-        } else {
-            this.sshConnection?.close();
-        }
-        this.proxyCommandProcess?.kill();
+        this.disposeConnectionState();
         this.labelFormatterDisposable?.dispose();
+        if (this.statusHideTimer) {
+            clearTimeout(this.statusHideTimer);
+        }
+        this.statusItem?.dispose();
     }
 }

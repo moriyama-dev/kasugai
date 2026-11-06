@@ -1,15 +1,21 @@
 {
-	"name": "open-remote-ssh",
-	"displayName": "Open Remote - SSH",
-	"description": "Use any remote machine with a SSH server as your development environment.",
-	"version": "0.5.1",
-	"publisher": "jeanp413",
+	"name": "kasugai-ssh",
+	"displayName": "Kasugai — Remote SSH",
+	"description": "Stable and fast SSH remote development for VSCodium and VS Code. Keeps your session alive through network drops and reconnects automatically.",
+	"version": "0.1.0",
+	"author": {
+		"name": "moriyama-dev",
+		"url": "https://github.com/moriyama-dev"
+	},
+	"publisher": "moriyama-dev",
+	"license": "MIT",
+	"homepage": "https://github.com/moriyama-dev/kasugai",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/jeanp413/open-remote-ssh.git"
+		"url": "https://github.com/moriyama-dev/kasugai.git"
 	},
 	"bugs": {
-		"url": "https://github.com/jeanp413/open-remote-ssh/issues"
+		"url": "https://github.com/moriyama-dev/kasugai/issues"
 	},
 	"engines": {
 		"vscode": "^1.70.2"
@@ -95,31 +101,31 @@
 		"yaml": "2.9.1"
 	},
 	"activationEvents": [
-		"onCommand:openremotessh.openEmptyWindow",
-		"onCommand:openremotessh.openEmptyWindowInCurrentWindow",
-		"onCommand:openremotessh.openConfigFile",
-		"onCommand:openremotessh.showLog",
-		"onResolveRemoteAuthority:ssh-remote",
-		"onView:sshHosts"
+		"onCommand:kasugai.openEmptyWindow",
+		"onCommand:kasugai.openEmptyWindowInCurrentWindow",
+		"onCommand:kasugai.openConfigFile",
+		"onCommand:kasugai.showLog",
+		"onResolveRemoteAuthority:kasugai-ssh",
+		"onView:kasugaiHosts"
 	],
 	"contributes": {
 		"configuration": {
-			"title": "Remote - SSH",
+			"title": "Kasugai",
 			"properties": {
-				"remote.SSH.configFile": {
+				"kasugai.configFile": {
 					"type": "string",
 					"description": "The absolute file path to a custom SSH config file.",
 					"default": "",
 					"scope": "application"
 				},
-				"remote.SSH.connectTimeout": {
+				"kasugai.connectTimeout": {
 					"type": "number",
 					"description": "Specifies the timeout in seconds used for the SSH command that connects to the remote.",
 					"default": 60,
 					"scope": "application",
 					"minimum": 1
 				},
-				"remote.SSH.verifyUnknownHosts": {
+				"kasugai.verifyUnknownHosts": {
 					"type": "string",
 					"enum": [
 						"accept",
@@ -135,7 +141,7 @@
 					"default": "ask",
 					"scope": "application"
 				},
-				"remote.SSH.verifyKnownHosts": {
+				"kasugai.verifyKnownHosts": {
 					"type": "string",
 					"enum": [
 						"accept",
@@ -151,7 +157,7 @@
 					"default": "reject",
 					"scope": "application"
 				},
-				"remote.SSH.defaultExtensions": {
+				"kasugai.defaultExtensions": {
 					"type": "array",
 					"items": {
 						"type": "string"
@@ -159,24 +165,24 @@
 					"description": "List of extensions that should be installed automatically on all SSH hosts.",
 					"scope": "application"
 				},
-				"remote.SSH.enableDynamicForwarding": {
+				"kasugai.enableDynamicForwarding": {
 					"type": "boolean",
 					"description": "Whether to use SSH dynamic forwarding to allow setting up new port tunnels over an existing SSH connection.",
 					"scope": "application",
 					"default": true
 				},
-				"remote.SSH.enableAgentForwarding": {
+				"kasugai.enableAgentForwarding": {
 					"type": "boolean",
 					"markdownDescription": "Enable fixing the remote environment so that the SSH config option `ForwardAgent` will take effect as expected from VS Code's remote extension host.",
 					"scope": "application",
 					"default": true
 				},
-				"remote.SSH.serverDownloadUrlTemplate": {
+				"kasugai.serverDownloadUrlTemplate": {
 					"type": "string",
 					"description": "The URL from where the vscode server will be downloaded. You can use the following variables and they will be replaced dynamically:\n- ${quality}: vscode server quality, e.g. stable or insiders\n- ${version}: vscode server version, e.g. 1.69.0\n- ${commit}: vscode server release commit\n- ${arch}: vscode server arch, e.g. x64, armhf, arm64\n- ${release}: release number, vscodium only https://github.com/VSCodium/vscodium/pull/1192",
 					"scope": "application"
 				},
-				"remote.SSH.remotePlatform": {
+				"kasugai.remotePlatform": {
 					"type": "object",
 					"description": "A map of the remote hostname to the platform for that remote. Valid values: linux, macos, windows.",
 					"scope": "application",
@@ -190,12 +196,12 @@
 						]
 					}
 				},
-				"remote.SSH.remoteServerListenOnSocket": {
+				"kasugai.remoteServerListenOnSocket": {
 					"type": "boolean",
 					"description": "When true, the remote vscode server will listen on a socket path instead of opening a port. Only valid for Linux and macOS remotes. Requires `AllowStreamLocalForwarding` to be enabled for the SSH server.",
 					"default": false
 				},
-				"remote.SSH.serverInstallPath": {
+				"kasugai.serverInstallPath": {
 					"type": "object",
 					"description": "Specifies custom installation directories for the VS Code server on remote hosts. Maps each remote hostname (or pattern) to an absolute path where the server should be installed. Supports wildcards: use `*` for catch-all, or `*.domain.com` for domain-specific paths. More specific patterns take precedence over general ones. When not specified, the server installs in the default home directory. **Note**: Changing this setting may require manual cleanup of existing server installations in previous locations.",
 					"scope": "application",
@@ -204,19 +210,19 @@
 						"type": "string"
 					}
 				},
-				"remote.SSH.serverBinaryName": {
+				"kasugai.serverBinaryName": {
 					"type": "string",
 					"description": "The name of the server binary, use this **only if** you are using a client without a corresponding server release",
 					"scope": "application",
 					"default": ""
 				},
-				"remote.SSH.serverVersion": {
+				"kasugai.serverVersion": {
 					"type": "string",
 					"description": "The version number of the remote VSCodium server. Can take the values: 'match' (default), 'latest', 'closest' or a specific version (e.g. '1.117.0').",
 					"scope": "application",
 					"default": "match"
 				},
-				"remote.SSH.serverValidation": {
+				"kasugai.serverValidation": {
 					"type": "string",
 					"description": "Type of server validation: 'strict' (default) enforces that the remote and local server are the same version by matching the commit, 'force' modifies the remote commit to match the local server, 'skip' skips validation all together.",
 					"scope": "application",
@@ -237,71 +243,71 @@
 		"views": {
 			"remote": [
 				{
-					"id": "sshHosts",
-					"name": "SSH Targets",
+					"id": "kasugaiHosts",
+					"name": "SSH Targets (Kasugai)",
 					"group": "targets@1",
-					"remoteName": "ssh-remote"
+					"remoteName": "kasugai-ssh"
 				}
 			]
 		},
 		"commands": [
 			{
-				"command": "openremotessh.openEmptyWindow",
+				"command": "kasugai.openEmptyWindow",
 				"title": "Connect to Host...",
-				"category": "Remote-SSH"
+				"category": "Kasugai"
 			},
 			{
-				"command": "openremotessh.openEmptyWindowInCurrentWindow",
+				"command": "kasugai.openEmptyWindowInCurrentWindow",
 				"title": "Connect Current Window to Host...",
-				"category": "Remote-SSH"
+				"category": "Kasugai"
 			},
 			{
-				"command": "openremotessh.openConfigFile",
+				"command": "kasugai.openConfigFile",
 				"title": "Open SSH Configuration File...",
-				"category": "Remote-SSH"
+				"category": "Kasugai"
 			},
 			{
-				"command": "openremotessh.showLog",
+				"command": "kasugai.showLog",
 				"title": "Show Log",
-				"category": "Remote-SSH"
+				"category": "Kasugai"
 			},
 			{
-				"command": "openremotessh.explorer.emptyWindowInNewWindow",
+				"command": "kasugai.explorer.emptyWindowInNewWindow",
 				"title": "Connect to Host in New Window",
 				"icon": "$(empty-window)"
 			},
 			{
-				"command": "openremotessh.explorer.emptyWindowInCurrentWindow",
+				"command": "kasugai.explorer.emptyWindowInCurrentWindow",
 				"title": "Connect to Host in Current Window",
 				"icon": "$(arrow-right)"
 			},
 			{
-				"command": "openremotessh.explorer.reopenFolderInCurrentWindow",
+				"command": "kasugai.explorer.reopenFolderInCurrentWindow",
 				"title": "Open on SSH Host in Current Window",
 				"icon": "$(arrow-right)"
 			},
 			{
-				"command": "openremotessh.explorer.reopenFolderInNewWindow",
+				"command": "kasugai.explorer.reopenFolderInNewWindow",
 				"title": "Open on SSH Host in New Window",
 				"icon": "$(folder-opened)"
 			},
 			{
-				"command": "openremotessh.explorer.deleteFolderHistoryItem",
+				"command": "kasugai.explorer.deleteFolderHistoryItem",
 				"title": "Remove From Recent List",
 				"icon": "$(x)"
 			},
 			{
-				"command": "openremotessh.explorer.refresh",
+				"command": "kasugai.explorer.refresh",
 				"title": "Refresh",
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "openremotessh.explorer.configure",
+				"command": "kasugai.explorer.configure",
 				"title": "Configure",
 				"icon": "$(gear)"
 			},
 			{
-				"command": "openremotessh.explorer.add",
+				"command": "kasugai.explorer.add",
 				"title": "Add New",
 				"icon": "$(plus)"
 			}
@@ -309,7 +315,7 @@
 		"resourceLabelFormatters": [
 			{
 				"scheme": "vscode-remote",
-				"authority": "ssh-remote+*",
+				"authority": "kasugai-ssh+*",
 				"formatting": {
 					"label": "${path}",
 					"separator": "/",
@@ -321,156 +327,156 @@
 		"menus": {
 			"statusBar/remoteIndicator": [
 				{
-					"command": "openremotessh.openEmptyWindow",
-					"when": "remoteName =~ /^ssh-remote$/ && remoteConnectionState == connected",
+					"command": "kasugai.openEmptyWindow",
+					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@1"
 				},
 				{
-					"command": "openremotessh.openEmptyWindowInCurrentWindow",
-					"when": "remoteName =~ /^ssh-remote$/ && remoteConnectionState == connected",
+					"command": "kasugai.openEmptyWindowInCurrentWindow",
+					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@2"
 				},
 				{
-					"command": "openremotessh.openConfigFile",
-					"when": "remoteName =~ /^ssh-remote$/ && remoteConnectionState == connected",
+					"command": "kasugai.openConfigFile",
+					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@3"
 				},
 				{
-					"command": "openremotessh.showLog",
-					"when": "remoteName =~ /^ssh-remote$/ && remoteConnectionState == connected",
+					"command": "kasugai.showLog",
+					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@4"
 				},
 				{
-					"command": "openremotessh.openEmptyWindow",
+					"command": "kasugai.openEmptyWindow",
 					"when": "remoteConnectionState == disconnected",
 					"group": "remote_20_ssh_3local@1"
 				},
 				{
-					"command": "openremotessh.openEmptyWindowInCurrentWindow",
+					"command": "kasugai.openEmptyWindowInCurrentWindow",
 					"when": "remoteConnectionState == disconnected",
 					"group": "remote_20_ssh_3local@2"
 				},
 				{
-					"command": "openremotessh.openConfigFile",
+					"command": "kasugai.openConfigFile",
 					"when": "remoteConnectionState == disconnected",
 					"group": "remote_20_ssh_3local@3"
 				},
 				{
-					"command": "openremotessh.openEmptyWindow",
+					"command": "kasugai.openEmptyWindow",
 					"when": "!remoteName && !virtualWorkspace",
 					"group": "remote_20_ssh_3local@5"
 				},
 				{
-					"command": "openremotessh.openEmptyWindowInCurrentWindow",
+					"command": "kasugai.openEmptyWindowInCurrentWindow",
 					"when": "!remoteName && !virtualWorkspace",
 					"group": "remote_20_ssh_3local@6"
 				},
 				{
-					"command": "openremotessh.openConfigFile",
+					"command": "kasugai.openConfigFile",
 					"when": "!remoteName && !virtualWorkspace",
 					"group": "remote_20_ssh_3local@7"
 				}
 			],
 			"commandPalette": [
 				{
-					"command": "openremotessh.explorer.refresh",
+					"command": "kasugai.explorer.refresh",
 					"when": "false"
 				},
 				{
-					"command": "openremotessh.explorer.configure",
+					"command": "kasugai.explorer.configure",
 					"when": "false"
 				},
 				{
-					"command": "openremotessh.explorer.add",
+					"command": "kasugai.explorer.add",
 					"when": "false"
 				},
 				{
-					"command": "openremotessh.explorer.emptyWindowInNewWindow",
+					"command": "kasugai.explorer.emptyWindowInNewWindow",
 					"when": "false"
 				},
 				{
-					"command": "openremotessh.explorer.emptyWindowInCurrentWindow",
+					"command": "kasugai.explorer.emptyWindowInCurrentWindow",
 					"when": "false"
 				},
 				{
-					"command": "openremotessh.explorer.reopenFolderInCurrentWindow",
+					"command": "kasugai.explorer.reopenFolderInCurrentWindow",
 					"when": "false"
 				},
 				{
-					"command": "openremotessh.explorer.reopenFolderInNewWindow",
+					"command": "kasugai.explorer.reopenFolderInNewWindow",
 					"when": "false"
 				},
 				{
-					"command": "openremotessh.explorer.deleteFolderHistoryItem",
+					"command": "kasugai.explorer.deleteFolderHistoryItem",
 					"when": "false"
 				}
 			],
 			"view/title": [
 				{
-					"command": "openremotessh.explorer.add",
-					"when": "view == sshHosts",
+					"command": "kasugai.explorer.add",
+					"when": "view == kasugaiHosts",
 					"group": "navigation"
 				},
 				{
-					"command": "openremotessh.explorer.configure",
-					"when": "view == sshHosts",
+					"command": "kasugai.explorer.configure",
+					"when": "view == kasugaiHosts",
 					"group": "navigation"
 				},
 				{
-					"command": "openremotessh.explorer.refresh",
-					"when": "view == sshHosts",
+					"command": "kasugai.explorer.refresh",
+					"when": "view == kasugaiHosts",
 					"group": "navigation"
 				}
 			],
 			"view/item/context": [
 				{
-					"command": "openremotessh.explorer.emptyWindowInCurrentWindow",
-					"when": "viewItem =~ /^openremotessh.explorer.host$/",
+					"command": "kasugai.explorer.emptyWindowInCurrentWindow",
+					"when": "viewItem =~ /^kasugai.explorer.host$/",
 					"group": "inline@1"
 				},
 				{
-					"command": "openremotessh.explorer.emptyWindowInNewWindow",
-					"when": "viewItem =~ /^openremotessh.explorer.host$/",
+					"command": "kasugai.explorer.emptyWindowInNewWindow",
+					"when": "viewItem =~ /^kasugai.explorer.host$/",
 					"group": "inline@1"
 				},
 				{
-					"command": "openremotessh.explorer.emptyWindowInNewWindow",
-					"when": "viewItem =~ /^openremotessh.explorer.host$/",
+					"command": "kasugai.explorer.emptyWindowInNewWindow",
+					"when": "viewItem =~ /^kasugai.explorer.host$/",
 					"group": "navigation@2"
 				},
 				{
-					"command": "openremotessh.explorer.emptyWindowInCurrentWindow",
-					"when": "viewItem =~ /^openremotessh.explorer.host$/",
+					"command": "kasugai.explorer.emptyWindowInCurrentWindow",
+					"when": "viewItem =~ /^kasugai.explorer.host$/",
 					"group": "navigation@1"
 				},
 				{
-					"command": "openremotessh.explorer.reopenFolderInCurrentWindow",
-					"when": "viewItem == openremotessh.explorer.folder",
+					"command": "kasugai.explorer.reopenFolderInCurrentWindow",
+					"when": "viewItem == kasugai.explorer.folder",
 					"group": "inline@1"
 				},
 				{
-					"command": "openremotessh.explorer.reopenFolderInNewWindow",
-					"when": "viewItem == openremotessh.explorer.folder",
+					"command": "kasugai.explorer.reopenFolderInNewWindow",
+					"when": "viewItem == kasugai.explorer.folder",
 					"group": "inline@1"
 				},
 				{
-					"command": "openremotessh.explorer.reopenFolderInNewWindow",
-					"when": "viewItem == openremotessh.explorer.folder",
+					"command": "kasugai.explorer.reopenFolderInNewWindow",
+					"when": "viewItem == kasugai.explorer.folder",
 					"group": "navigation@2"
 				},
 				{
-					"command": "openremotessh.explorer.reopenFolderInCurrentWindow",
-					"when": "viewItem == openremotessh.explorer.folder",
+					"command": "kasugai.explorer.reopenFolderInCurrentWindow",
+					"when": "viewItem == kasugai.explorer.folder",
 					"group": "navigation@1"
 				},
 				{
-					"command": "openremotessh.explorer.deleteFolderHistoryItem",
-					"when": "viewItem =~ /^openremotessh.explorer.folder/",
+					"command": "kasugai.explorer.deleteFolderHistoryItem",
+					"when": "viewItem =~ /^kasugai.explorer.folder/",
 					"group": "navigation@3"
 				},
 				{
-					"command": "openremotessh.explorer.deleteFolderHistoryItem",
-					"when": "viewItem =~ /^openremotessh.explorer.folder/",
+					"command": "kasugai.explorer.deleteFolderHistoryItem",
+					"when": "viewItem =~ /^kasugai.explorer.folder/",
 					"group": "inline@2"
 				}
 			]
@@ -508,9 +514,12 @@
 		"fsevents": true
 	},
 	"keywords": [
+		"kasugai",
+		"reconnect",
 		"remote",
 		"remote development",
-		"ssh"
+		"ssh",
+		"vscodium"
 	],
 	"api": "none",
 	"enabledApiProposals": [
