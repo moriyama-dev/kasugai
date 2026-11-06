@@ -1,0 +1,43 @@
+name: macOS start-up test
+
+# Must pass before every release. Runs on GitHub's standard macOS runner only,
+# uses no secrets, reads the repository only, and never runs for pull requests.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests (no Docker on macOS runners)
+        run: npx vitest run test/argv-json.test.ts test/detect-platform.test.ts test/ssh-config.test.ts test/known-hosts.test.ts test/resolve-proxy-jumps.test.ts test/proxy-jump-port.test.ts test/server-startup.test.ts test/native-client.test.ts
+
+      - name: Start-up test (VSCodium and VS Code)
+        run: npm run test:startup
+
+      - name: Package
+        run: npx vsce package --no-dependencies -o kasugai.vsix

@@ -37,6 +37,7 @@
 		"lint:all": "npm run lint:package && npm run audit && npm run ci:lint && npm run lint",
 		"lint:fix": "eslint --fix",
 		"lint:package": "fixpack || true",
+		"notices": "node scripts/third-party-notices.mjs",
 		"package": "rimraf --glob '*.vsix' && vsce package",
 		"postinstall": "npm run update:dts",
 		"prepare": "husky; npm run lint:package",
@@ -44,6 +45,7 @@
 		"test": "vitest run --reporter tree",
 		"test:coverage": "vitest run --reporter tree --coverage --coverage.reporter text",
 		"test:images": "bash ./dockerfiles/build.sh",
+		"test:startup": "node test-startup/run.mjs",
 		"test:ui": "vitest --ui --coverage",
 		"test:watch": "vitest",
 		"update:artifacts": "artifact update",
@@ -57,8 +59,8 @@
 	"dependencies": {
 		"@zokugun/is-it-type": "0.8.1",
 		"glob": "13.0.6",
+		"jsonc-parser": "3.3.1",
 		"semver": "7.8.5",
-		"simple-socks": "3.6.0",
 		"socks": "2.8.10",
 		"ssh-config": "5.3.0",
 		"ssh2": "git+https://github.com/jeanp413/ssh2#master"
@@ -77,6 +79,7 @@
 		"@typescript-eslint/parser": "8.71.2",
 		"@vitest/coverage-v8": "4.1.12",
 		"@vitest/ui": "4.1.12",
+		"@vscode/test-electron": "3.1.0",
 		"@vscode/vsce": "3.9.2",
 		"@zokugun/fs-extra-plus": "0.5.0",
 		"@zokugun/xtry": "0.11.6",
@@ -188,7 +191,7 @@
 				},
 				"kasugai.enableDynamicForwarding": {
 					"type": "boolean",
-					"description": "Whether to use SSH dynamic forwarding to allow setting up new port tunnels over an existing SSH connection.",
+					"description": "Only used when connecting through the local ssh client (GSSAPI hosts): open one SOCKS forward (-D) and route tunnels through it instead of starting an ssh process per tunnel. Connections made by Kasugai's built-in SSH client always forward directly.",
 					"scope": "application",
 					"default": true
 				},
@@ -592,7 +595,6 @@
 		"ssh",
 		"vscodium"
 	],
-	"api": "none",
 	"enabledApiProposals": [
 		"resolvers",
 		"contribViewsRemote"

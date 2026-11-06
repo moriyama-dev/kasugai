@@ -1,4 +1,4 @@
 /**
- * Platform values accepted by the `remote.SSH.remotePlatform` setting.
+ * Platform values accepted by the `kasugai.remotePlatform` setting.
  */
 export type RemotePlatform = 'linux' | 'macos' | 'windows';

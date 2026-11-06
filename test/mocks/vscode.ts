@@ -72,7 +72,6 @@ class ResolvedAuthority {
     }
 }
 
-// eslint-disable-next-line prefer-const
 let version = '1.126.04524';
 
 /** Pretend to be another editor build (e.g. VS Code reports '1.126.0'). */

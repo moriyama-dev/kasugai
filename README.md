@@ -1,103 +1,111 @@
-# Open Remote - SSH
+# Kasugai — Remote SSH
 
-![Open Remote SSH](https://raw.githubusercontent.com/jeanp413/open-remote-ssh/master/docs/images/open-remote-ssh.gif)
+<img src="resources/icon.png" width="96" align="right" alt="Kasugai icon">
 
-## SSH Host Requirements
-You can connect to a running SSH server on the following platforms.
+**Stable, fast SSH remote development for VSCodium and VS Code.**
 
-**Supported**:
+A *kasugai* (鎹) is the iron staple Japanese carpenters drive across two timbers so they never come apart. Kasugai does the same for your editor and your server: it keeps the connection together through Wi-Fi changes, sleeping laptops and flaky VPNs. When the network comes back, your session picks up where it left off.
 
-- x86_64 Debian 8+, Ubuntu 16.04+, CentOS / RHEL 7+ Linux
-- ARMv7l (AArch32) Raspbian Stretch/9+ (32-bit)
-- ARMv8l (AArch64) Ubuntu 18.04+ (64-bit)
-- IBM Z (s390x) Debian 13, RHEL 8+, Ubuntu 22.04+, SLES 15+
-- macOS 10.14+ (Mojave)
-- Windows 10+
-- FreeBSD 13+ (Requires custom serverDownloadUrlTemplate setting)
-- DragonFlyBSD (Requires manual remote-extension-host installation)
+[日本語の説明はこちら](README.ja.md)
 
-## Requirements
+## Why Kasugai
 
-**Configuration**
+### Stability first
 
-You SSH server's configuration needs to have the following setting:
-- `AllowTcpForwarding yes`
+- **Reconnects by itself.** When the SSH connection drops, Kasugai keeps re-establishing it in the background, waiting longer between tries (from 0.5 s up to 15 s), for up to an hour. Your remote session survives: open editors, terminals and the extension host carry on.
+- **Notices a dead link quickly.** SSH keepalives every 15 s, so a silently broken connection is detected within about 45 s instead of hanging. `ServerAliveInterval` / `ServerAliveCountMax` from your SSH config are honoured.
+- **Works through jump hosts.** When it reconnects, it rebuilds `ProxyJump` chains and `ProxyCommand` processes hop by hop.
+- **Asks once.** Private keys you unlocked with a passphrase stay unlocked in memory for the window, so a reconnect doesn't prompt again. A forwarded SSH agent is re-attached after a reconnect.
+- **Never takes the editor down.** Network errors on forwarded connections and a failing `ProxyCommand` are handled instead of crashing the extension host.
+- **Shows what's happening.** The status bar shows *reconnecting…*, *reconnected* or *disconnected*. The log records every drop, every retry and the duration of each step.
+- **Hosts without internet access.** If the host cannot download the server, Kasugai downloads it on your machine and uploads it over SSH (`kasugai.localServerDownload`).
+- **Unstick a host.** `Kasugai: Kill Server on Host...` stops a wedged remote server and starts a fresh one.
 
-**Activation**
+### Then speed
 
-> NOTE: Not needed in VSCodium since version 1.75
+- **Instant reloads.** Reloading the window or reconnecting reuses the open SSH session. No new handshake or login, and the running server is found again in tens of milliseconds.
+- **Fewer round trips.** Each host's platform is remembered and re-checked inside the install script instead of being detected again on every connection.
+- **Low-latency forwarding.** `TCP_NODELAY` on the SSH socket and every forwarded connection, so keystrokes and language-server messages aren't held back by Nagle's algorithm.
+- **Quicker start.** Server readiness is polled every 100 ms.
 
-Enable the extension in your `argv.json`
+## Install
 
+| Editor | How |
+|---|---|
+| **VSCodium** | Search for **Kasugai** in the Extensions view (Open VSX), or run `codium --install-extension moriyama-dev.kasugai-ssh`. |
+| **VS Code** | Download `kasugai-ssh-<version>.vsix` from [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and run `code --install-extension kasugai-ssh-<version>.vsix`. (The VS Code Marketplace does not accept extensions that need the API described below.) |
 
-```json
+### One-time setup
+
+Remote windows depend on an editor API that VSCodium and VS Code only enable for extensions listed in `argv.json`. **On first start, Kasugai offers to add itself there for you.** Choose *Enable Kasugai*, then quit and restart the editor (reloading the window is not enough).
+
+To do it by hand, run **Preferences: Configure Runtime Arguments**, add the following and restart:
+
+```jsonc
 {
-    ...
-    "enable-proposed-api": [
-        ...,
-        "jeanp413.open-remote-ssh",
-    ]
-    ...
+    "enable-proposed-api": ["moriyama-dev.kasugai-ssh"]
 }
 ```
-which you can open by running the `Preferences: Configure Runtime Arguments` command.
-The file is located in `~/.vscode-oss/argv.json`.
 
-**Alpine linux**
+## Use
 
-When running on alpine linux, the packages `libstdc++` and `bash` are necessary and can be installed via
-running
-```bash
-sudo apk add bash libstdc++
-```
+- **Kasugai: Connect to Host...** (also in the remote indicator at the bottom left) opens a remote window. Hosts come from your `~/.ssh/config`.
+- The **Remote Explorer** lists your SSH hosts and recently opened folders under *SSH Targets (Kasugai)*.
+- **Kasugai: Show Log** shows the connection log.
+- **Kasugai: Kill Server on Host...** restarts a stuck remote server.
+- **Kasugai: Report an Issue** / **Kasugai: Open on GitHub**: send feedback (also in the *SSH Targets* view menu).
 
-## SSH configuration file
+Kasugai uses its own remote type (`kasugai-ssh`), so it can be installed next to other SSH remote extensions without conflict.
 
-[OpenSSH](https://www.openssh.com/) supports using a [configuration file](https://linuxize.com/post/using-the-ssh-config-file/) to store all your different SSH connections.
-To use an SSH config file, run the `Remote-SSH: Open SSH Configuration File...` command.
+## SSH host requirements
 
-## SSH configuration guides
+- Linux (x86_64, ARMv7l, ARMv8l/AArch64, ppc64le, riscv64, s390x, loong64), macOS, FreeBSD, Windows 10+
+- `AllowTcpForwarding yes` in the server's `sshd_config`
+- Alpine Linux needs `bash` and `libstdc++` (`apk add bash libstdc++`)
 
-- [GSSAPI / Kerberos authentication](https://github.com/jeanp413/open-remote-ssh/blob/master/docs/gssapi-kerberos-authentication.md.md)
-- [Jump hosts](https://github.com/jeanp413/open-remote-ssh/blob/master/docs/jump-hosts.md)
+## Settings
 
-## Note for VSCode-OSS users
+| Setting | Default | Purpose |
+|---|---|---|
+| `kasugai.keepAliveInterval` | `15` | Seconds between keepalives. `0` disables them. `ServerAliveInterval` in your SSH config wins. |
+| `kasugai.keepAliveCountMax` | `3` | Unanswered keepalives before reconnecting. `ServerAliveCountMax` wins. |
+| `kasugai.reconnectTimeout` | `3600` | Seconds to keep trying to reconnect. `0` disables automatic reconnection. |
+| `kasugai.connectTimeout` | `60` | Seconds allowed for connecting and logging in. |
+| `kasugai.localServerDownload` | `auto` | `auto`: download on the host, fall back to this machine. `always`: always download here and upload. `off`: host only. |
+| `kasugai.configFile` | | Custom SSH config file. |
+| `kasugai.verifyUnknownHosts` / `kasugai.verifyKnownHosts` | `ask` / `reject` | Host key checking policy. |
+| `kasugai.enableAgentForwarding` | `true` | Honour `ForwardAgent` from the SSH config. |
+| `kasugai.enableDynamicForwarding` | `true` | Use SSH dynamic forwarding for port tunnels. |
+| `kasugai.remoteServerListenOnSocket` | `false` | Server listens on a Unix socket instead of a port. |
+| `kasugai.serverInstallPath` | `{}` | Per-host server install directory (wildcards allowed). |
+| `kasugai.defaultExtensions` | `[]` | Extensions to install on every host. |
+| `kasugai.remotePlatform` | `{}` | Force the platform of a host (`linux`, `macos`, `windows`). |
+| `kasugai.serverDownloadUrlTemplate`, `kasugai.serverVersion`, `kasugai.serverValidation`, `kasugai.serverBinaryName` | | Which server release to install. See below. |
 
-If you are using VSCode-OSS instead of VSCodium, you need some extra steps to make it work.
+**Coming from another SSH remote extension?** Any of these you already set as `remote.SSH.<name>` are picked up automatically as long as the `kasugai.<name>` counterpart is not set.
 
-Modify the following entries in the plugin settings:
+### Which server is installed
 
-```
-"remote.SSH.serverBinaryName": "codium-server",
-"remote.SSH.serverDownloadUrlTemplate": "https://github.com/VSCodium/vscodium/releases/download/${version}${release}/vscodium-reh-${os}-${arch}-${version}${release}.tar.gz",
-"remote.SSH.serverVersion": "latest",
-"remote.SSH.serverValidation": "force",
-```
+Kasugai always runs the open-source VSCodium remote server.
 
-VSCodium versions have an extra `release` part that do not have equivalent for VSCode-OSS.
-So leaving `serverVersion` to the default `"match"` will fail.
-The plugin will install the latest release of VSCodium if `serverVersion` is set to `"latest"`.
-If you need to match the VSCode-OSS version, set `serverVersion` to `"closest"`, to
-automatically fetch the last release of VSCodium for this version.
+- In **VSCodium** it installs the release that matches your editor, in `~/.vscodium-server`.
+- In **VS Code** and other builds it installs the closest VSCodium release for your editor version and aligns its commit (`serverVersion: closest`, `serverValidation: force`). It keeps that install in **`~/.kasugai-server`**, so it never mixes with servers that other extensions keep in `~/.vscode-server`.
 
-You can look for the release numbers associated with your VSCode version in the
-[release page](https://github.com/VSCodium/vscodium/releases/). For instance, for VSCode
-version "1.96.0", the (last) VSCodium release number is "24352".
+## Troubleshooting
 
-You can also set `serverVersion` to a specic version (e.g. "1.116.0") or a specific
-version-release (e.g. "1.116.02821").
+1. Run **Kasugai: Show Log**. Each connection logs how long each step took, and every drop and reconnect is listed.
+2. If the window says the server cannot be reached after a long outage, run **Kasugai: Kill Server on Host...**.
+3. Behind a firewall without internet on the host, set `kasugai.localServerDownload` to `always`.
+4. Make sure `AllowTcpForwarding` is enabled on the server.
 
-If the local and remote VSCodium versions don't match, which will be the case on VSCode-OSS,
-remote server validation needs to be bypassed. Setting `serverValidation` to `"force"` will
-modify the commit of the remote server to make it match the local VSCode commit.
-If `serverValidation` is set to `"skip"`, the remote server will skip checking that the commits
-match. This option is working only if the remote VSCodium version is `>=1.120`.
+Guides: [jump hosts](docs/jump-hosts.md), [GSSAPI / Kerberos](docs/gssapi-kerberos-authentication.md).
 
-Starting with VSCodium version 1.99.0, the `release` number is not separated from the `version` by a dot `.` anymore.
-Therefore `serverDownloadUrlTemplate` needs to be filled with the new scheme (as shown above).
+## Feedback
 
-Before 1.99.0, the old scheme needs to be used:
+Found a problem or have an idea? Use **Kasugai: Report an Issue** or open an issue on [GitHub](https://github.com/moriyama-dev/kasugai/issues). Please remove host names and user names from logs before posting.
 
-```
-"remote.SSH.serverDownloadUrlTemplate": "https://github.com/VSCodium/vscodium/releases/download/${version}.${release}/vscodium-reh-${os}-${arch}-${version}.${release}.tar.gz",
-```
+## Credits and license
+
+Kasugai is based on [open-remote-ssh](https://github.com/jeanp413/open-remote-ssh) by jeanp413 and its contributors, and is released under the same [MIT License](LICENSE.txt). The design notes behind the stability work are in [docs/design](docs/design).
+
+Kasugai is an independent project and is not affiliated with Microsoft or the VSCodium project.

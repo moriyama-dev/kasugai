@@ -603,7 +603,10 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
             }
         }
 
-        if (enableDynamicForwarding) {
+        // Only the native ssh client benefits from a SOCKS (-D) forward: it
+        // saves spawning one ssh process per tunnel. The in-process ssh2 client
+        // opens a channel per connection directly, which is one hop shorter.
+        if (enableDynamicForwarding && this.sshConnection instanceof NativeSSHConnection) {
             const socksPort = await findRandomPort();
             this.socksTunnel = await this.sshConnection!.addTunnel({
                 name: `ssh_tunnel_socks_${socksPort}`,

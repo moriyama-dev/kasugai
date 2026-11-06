@@ -3,6 +3,43 @@ Changelog
 
 All notable changes to this project will be documented in this file.
 
+[v0.1.0](https://github.com/moriyama-dev/kasugai/releases/tag/v0.1.0) | 2026-11-06
+-----------------------------------------------------------------------------------
+
+First release of **Kasugai**, based on open-remote-ssh v0.5.1.
+
+### Stability
+
+- Dropped SSH sessions are re-established automatically in the background with exponential backoff (`kasugai.reconnectTimeout`), including `ProxyJump` chains and `ProxyCommand`
+- SSH keepalive (`kasugai.keepAliveInterval`, `kasugai.keepAliveCountMax`; `ServerAliveInterval`/`ServerAliveCountMax` from ssh_config win)
+- A fresh authentication handler per attempt; passphrase-unlocked keys are kept in memory for the window
+- Re-resolving reuses a live session and no longer leaks the previous connection, tunnels and proxy processes
+- Forwarded connections and `ProxyCommand` can no longer crash the extension host on errors
+- Status bar shows reconnecting / reconnected / disconnected
+- Agent forwarding is restored after a reconnect
+- The server can be downloaded on the client and uploaded over SSH (`kasugai.localServerDownload`); `curl` now fails on HTTP errors
+- `Kasugai: Kill Server on Host...`
+- Activation no longer fails when the proposed API is not enabled; Kasugai offers to add itself to `argv.json`
+
+### Speed
+
+- Reloads and editor-side reconnects reuse the open session (no new handshake or login)
+- The platform of each host is remembered and verified by the install script
+- `TCP_NODELAY` on the SSH socket and every forwarded connection
+- Server readiness polled every 100 ms
+- VSCodium release lookups are cached for the session
+
+### Other
+
+- Own remote authority (`kasugai-ssh`), settings (`kasugai.*`, falling back to `remote.SSH.*`) and commands, so Kasugai coexists with other SSH remote extensions
+- VS Code and other non-VSCodium editors get the closest VSCodium server in `~/.kasugai-server`
+- `Kasugai: Report an Issue` and `Kasugai: Open on GitHub`
+- New icon
+
+---
+
+History of open-remote-ssh, on which Kasugai is based:
+
 [v0.5.1](https://github.com/jeanp413/open-remote-ssh/releases/tag/v0.5.1) | 2026-10-26
 --------------------------------------------------------------------------------------
 

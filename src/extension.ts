@@ -4,6 +4,7 @@ import { RemoteSSHResolver, REMOTE_SSH_AUTHORITY } from './authResolver';
 import { openSSHConfigFile, promptOpenRemoteSSHWindow } from './commands';
 import { HostTreeDataProvider } from './hostTreeView';
 import { openRepository, reportIssue } from './feedback';
+import { offerProposedApiSetup } from './setup';
 import { getRemoteWorkspaceLocationData, RemoteLocationHistory } from './remoteLocationHistory';
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -11,8 +12,17 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(logger);
 
     const remoteSSHResolver = new RemoteSSHResolver(context, logger);
-    context.subscriptions.push(vscode.workspace.registerRemoteAuthorityResolver(REMOTE_SSH_AUTHORITY, remoteSSHResolver));
     context.subscriptions.push(remoteSSHResolver);
+    let resolverRegistered = false;
+    try {
+        context.subscriptions.push(vscode.workspace.registerRemoteAuthorityResolver(REMOTE_SSH_AUTHORITY, remoteSSHResolver));
+        resolverRegistered = true;
+    } catch (e) {
+        // Proposed API not granted: keep the rest of the extension working and
+        // help the user enable it instead of failing activation
+        logger.error('Kasugai cannot register its SSH resolver (proposed API not enabled)', e);
+        void offerProposedApiSetup(context.extension?.id ?? 'moriyama-dev.kasugai-ssh', logger);
+    }
 
     const locationHistory = new RemoteLocationHistory(context);
     const locationData = getRemoteWorkspaceLocationData();
@@ -31,6 +41,9 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.killServer', () => remoteSSHResolver.killServerOnHost()));
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.reportIssue', () => reportIssue(String(context.extension?.packageJSON?.version ?? 'unknown'))));
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.openRepository', () => openRepository()));
+
+    // Read by the start-up tests
+    return { resolverRegistered };
 }
 
 export function deactivate() {

@@ -8,3 +8,5 @@
 !lib/extension.js
 !resources/icon.png
 !src/scripts/**
+!THIRD_PARTY_NOTICES.md
+!README.ja.md

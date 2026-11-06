@@ -18,6 +18,8 @@ export default defineConfig(
         '**/lib/',
         '**/*.d.ts',
         '**/*.js',
+        '**/.vscode-test/',
+        'test-startup/',
     ]),
     {
         plugins: {

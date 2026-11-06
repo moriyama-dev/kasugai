@@ -6,10 +6,6 @@ import * as fs from 'fs';
 import { Client, ClientChannel, ClientErrorExtensions, ExecOptions, ShellOptions, ConnectConfig } from 'ssh2';
 import { Server } from 'net';
 import type { Duplex } from 'stream';
-import socks from 'simple-socks';
-// eslint-disable-next-line no-duplicate-imports
-import type { DestinationInfo, OriginInfo, ConnectionOptionsCallback } from 'simple-socks';
-import { isString } from '@zokugun/is-it-type';
 
 export interface SSHConnectConfig extends ConnectConfig {
     /** Optional Unique ID attached to ssh connection. */
@@ -225,15 +221,6 @@ export default class SSHConnection extends EventEmitter {
     }
 
     /**
-     * Get a Socks Port
-     */
-    getSocksPort(localPort: number): Promise<number> {
-        return this.addTunnel({ name: '__socksServer', socks: true, localPort: localPort }).then((tunnel) => {
-            return tunnel.localPort!;
-        });
-    }
-
-    /**
      * Close SSH Connection
      */
     close(): Promise<void> {
@@ -418,40 +405,21 @@ export default class SSHConnection extends EventEmitter {
             return Promise.resolve(this.getTunnel(SSHTunnelConfig.name));
         } else {
             return new Promise((resolve, reject) => {
-                let server: net.Server;
-                if (SSHTunnelConfig.socks) {
-                    server = socks.createServer({
-                        connectionOptions: (destination, origin, defaults, callback) => {
-                            this.createSshForwardTarget(destination, origin, (err, target) => {
-                                if (err) {
-                                    this.emit(SSHConstants.CHANNEL.TUNNEL, SSHConstants.STATUS.DISCONNECT, { SSHTunnelConfig: SSHTunnelConfig, err: err });
-                                    return callback(err);
-                                }
-
-                                return callback(null, {
-                                    ...defaults,
-                                    ...target,
-                                });
-                            });
-                        },
-                    }).on('proxyError', (err: unknown) => {
-                        this.emit(SSHConstants.CHANNEL.TUNNEL, SSHConstants.STATUS.DISCONNECT, { SSHTunnelConfig: SSHTunnelConfig, err: err });
-                    });
-                } else {
-                    server = net.createServer()
-                        .on('connection', (socket) => {
-                            socket.setNoDelay(true);
-                            // Without a listener a reset local socket would throw
-                            // and take the whole extension host down
-                            socket.on('error', () => socket.destroy());
-                            this.forwardTunnelSocket(SSHTunnelConfig).then((stream) => {
-                                pipeBoth(socket, stream);
-                            }, (err: unknown) => {
-                                this.emit(SSHConstants.CHANNEL.TUNNEL, SSHConstants.STATUS.DISCONNECT, { SSHTunnelConfig: SSHTunnelConfig, err: err });
-                                socket.destroy();
-                            });
+                // In-process SSH: every forwarded connection gets its own
+                // channel directly, no SOCKS hop needed
+                const server: net.Server = net.createServer()
+                    .on('connection', (socket) => {
+                        socket.setNoDelay(true);
+                        // Without a listener a reset local socket would throw
+                        // and take the whole extension host down
+                        socket.on('error', () => socket.destroy());
+                        this.forwardTunnelSocket(SSHTunnelConfig).then((stream) => {
+                            pipeBoth(socket, stream);
+                        }, (err: unknown) => {
+                            this.emit(SSHConstants.CHANNEL.TUNNEL, SSHConstants.STATUS.DISCONNECT, { SSHTunnelConfig: SSHTunnelConfig, err: err });
+                            socket.destroy();
                         });
-                }
+                    });
 
                 SSHTunnelConfig.localPort = SSHTunnelConfig.localPort || 0;
                 server.on('listening', () => {
@@ -512,46 +480,6 @@ export default class SSHConnection extends EventEmitter {
             } else {
                 ssh.openssh_forwardOutStreamLocal(tunnel.remoteSocketPath!, (err, stream) => err ? reject(err) : resolve(stream));
             }
-        });
-    }
-
-    private createSshForwardTarget(destination: DestinationInfo, origin: OriginInfo, callback: ConnectionOptionsCallback) {
-        const forwarder = net.createServer((localSocket) => {
-            // This listener is for one SOCKS request only.
-            forwarder.close();
-            localSocket.setNoDelay(true);
-            localSocket.on('error', () => localSocket.destroy());
-
-            this.connect().then(() => {
-                this.sshConnection!.forwardOut(
-                    origin.address,
-                    origin.port,
-                    destination.address,
-                    destination.port,
-                    (err, sshStream) => {
-                        if (err) {
-                            localSocket.destroy(err);
-                            return;
-                        }
-                        pipeBoth(localSocket, sshStream);
-                    },
-                );
-            }, (err: Error) => localSocket.destroy(err));
-        });
-
-        forwarder.once('error', callback);
-
-        forwarder.listen(0, '127.0.0.1', () => {
-            const address = forwarder.address();
-
-            if(address === null || isString(address)) {
-                return callback(new Error(`Invalid address: ${address}`));
-            }
-
-            callback(null, {
-                host: address.address,
-                port: address.port,
-            });
         });
     }
 }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Kasugai: an iron staple holding two timbers together -->
+  <rect x="0" y="0" width="512" height="512" rx="96" fill="#1F2A30"/>
+  <!-- two timbers -->
+  <rect x="56" y="196" width="196" height="200" rx="10" fill="#D9A867"/>
+  <rect x="260" y="196" width="196" height="200" rx="10" fill="#D9A867"/>
+  <!-- grain -->
+  <path d="M72 250 H236 M72 300 H236 M72 350 H236" stroke="#B9844A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M276 250 H440 M276 300 H440 M276 350 H440" stroke="#B9844A" stroke-width="8" stroke-linecap="round"/>
+  <!-- the staple: bridge + two legs driven into the wood -->
+  <path d="M136 290 V146 H376 V290" fill="none" stroke="#E8EEF2" stroke-width="40" stroke-linejoin="miter"/>
+  <path d="M116 290 L136 330 L156 290 Z" fill="#E8EEF2"/>
+  <path d="M356 290 L376 330 L396 290 Z" fill="#E8EEF2"/>
+</svg>
