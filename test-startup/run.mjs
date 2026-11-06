@@ -64,19 +64,35 @@ async function executableFor(target) {
     return target === 'vscodium' ? downloadVSCodium() : downloadAndUnzipVSCode({ version: 'stable', cachePath: cache });
 }
 
+// Package the extension once so the install-from-file path can be tested
+let vsix;
+try {
+    vsix = join(mkdtempSync(join(tmpdir(), 'kasugai-vsix-')), 'kasugai-test.vsix');
+    execFileSync('npx', ['vsce', 'package', '--no-dependencies', '-o', vsix], { cwd: root, stdio: 'ignore' });
+} catch (e) {
+    console.warn('Could not package the extension; skipping the .vsix install check', e);
+    vsix = undefined;
+}
+
 let failed = false;
 for (const target of targets) {
     for (const proposedApi of [true, false]) {
         const label = `${target} (${proposedApi ? 'with' : 'without'} enable-proposed-api)`;
         console.log(`\n=== ${label} ===`);
+        const extensionsDir = mkdtempSync(join(tmpdir(), 'kasugai-ext-'));
         try {
             const vscodeExecutablePath = await executableFor(target);
             await runTests({
                 vscodeExecutablePath,
                 extensionDevelopmentPath: root,
                 extensionTestsPath: join(root, 'test-startup', 'suite.cjs'),
-                extensionTestsEnv: { KASUGAI_EXPECT_RESOLVER: proposedApi ? '1' : '0' },
+                extensionTestsEnv: {
+                    KASUGAI_EXPECT_RESOLVER: proposedApi ? '1' : '0',
+                    // Exercise the updater's install path once per editor
+                    ...(proposedApi && vsix ? { KASUGAI_TEST_VSIX: vsix, KASUGAI_EXTENSIONS_DIR: extensionsDir } : {}),
+                },
                 launchArgs: [
+                    '--extensions-dir', extensionsDir,
                     ...(proposedApi ? ['--enable-proposed-api', extensionId] : []),
                     '--disable-extensions',
                     '--disable-workspace-trust',

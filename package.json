@@ -2,7 +2,7 @@
 	"name": "kasugai-ssh",
 	"displayName": "Kasugai — Remote SSH",
 	"description": "Stable and fast SSH remote development for VSCodium and VS Code. Keeps your session alive through network drops and reconnects automatically.",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"author": {
 		"name": "moriyama-dev",
 		"url": "https://github.com/moriyama-dev"
@@ -39,6 +39,7 @@
 		"lint:package": "fixpack || true",
 		"notices": "node scripts/third-party-notices.mjs",
 		"package": "rimraf --glob '*.vsix' && vsce package",
+		"package:release": "bash scripts/package-release.sh",
 		"postinstall": "npm run update:dts",
 		"prepare": "husky; npm run lint:package",
 		"release": "release-it",
@@ -275,6 +276,20 @@
 						"The remote server won't validate the client.",
 						"The remote server and client's commits must match."
 					]
+				},
+				"kasugai.updateCheck": {
+					"type": "string",
+					"enum": [
+						"notify",
+						"off"
+					],
+					"default": "notify",
+					"scope": "application",
+					"enumDescriptions": [
+						"Check GitHub Releases once a day and offer new versions.",
+						"Never check for updates."
+					],
+					"markdownDescription": "Kasugai is installed from GitHub Releases, which editors do not update by themselves. With `notify`, Kasugai checks for a new release once a day and installs it when you choose **Update**, after verifying its SHA-256 checksum."
 				}
 			}
 		},
@@ -365,6 +380,11 @@
 				"title": "Open on GitHub",
 				"category": "Kasugai",
 				"icon": "$(github)"
+			},
+			{
+				"command": "kasugai.checkForUpdates",
+				"title": "Check for Updates...",
+				"category": "Kasugai"
 			}
 		],
 		"resourceLabelFormatters": [
@@ -500,6 +520,11 @@
 					"command": "kasugai.openRepository",
 					"when": "view == kasugaiHosts",
 					"group": "kasugai@2"
+				},
+				{
+					"command": "kasugai.checkForUpdates",
+					"when": "view == kasugaiHosts",
+					"group": "kasugai@3"
 				}
 			],
 			"view/item/context": [

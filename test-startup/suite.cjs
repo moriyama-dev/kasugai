@@ -18,5 +18,16 @@ exports.run = async function run() {
     assert.strictEqual(api && api.resolverRegistered, expectResolver,
         expectResolver ? 'the SSH resolver is registered' : 'activation survives without the proposed API');
 
+    assert.ok(commands.includes('kasugai.checkForUpdates'), 'command kasugai.checkForUpdates is registered');
+
+    // The updater installs a downloaded .vsix through this editor command
+    if (process.env.KASUGAI_TEST_VSIX) {
+        await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(process.env.KASUGAI_TEST_VSIX));
+        const fs = require('fs');
+        const installed = fs.readdirSync(process.env.KASUGAI_EXTENSIONS_DIR).filter(name => name.startsWith('moriyama-dev.kasugai-ssh-'));
+        assert.ok(installed.length > 0, 'the .vsix was installed by workbench.extensions.installExtension');
+        console.log(`[kasugai startup] installed from .vsix: ${installed.join(', ')}`);
+    }
+
     console.log(`[kasugai startup] ${vscode.env.appName} ${vscode.version}: activated, resolverRegistered=${api.resolverRegistered}`);
 };

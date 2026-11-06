@@ -13,3 +13,4 @@
 /coverage/
 /**/*.js
 /**/*.js.map
+/dist/

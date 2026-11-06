@@ -3,6 +3,18 @@ Changelog
 
 All notable changes to this project will be documented in this file.
 
+[v0.2.0](https://github.com/moriyama-dev/kasugai/releases/tag/v0.2.0) | 2026-11-06
+-----------------------------------------------------------------------------------
+
+### Added
+
+- Updates straight from GitHub Releases: a daily check (`kasugai.updateCheck`) and `Kasugai: Check for Updates...`. The downloaded `.vsix` is verified against the release's `SHA256SUMS` before it is installed. Works the same in VSCodium and VS Code.
+
+### Changed
+
+- Install instructions point to GitHub Releases for both editors.
+
+
 [v0.1.0](https://github.com/moriyama-dev/kasugai/releases/tag/v0.1.0) | 2026-11-06
 -----------------------------------------------------------------------------------
 

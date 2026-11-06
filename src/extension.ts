@@ -5,6 +5,7 @@ import { openSSHConfigFile, promptOpenRemoteSSHWindow } from './commands';
 import { HostTreeDataProvider } from './hostTreeView';
 import { openRepository, reportIssue } from './feedback';
 import { offerProposedApiSetup } from './setup';
+import { Updater } from './updater';
 import { getRemoteWorkspaceLocationData, RemoteLocationHistory } from './remoteLocationHistory';
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -41,6 +42,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.killServer', () => remoteSSHResolver.killServerOnHost()));
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.reportIssue', () => reportIssue(String(context.extension?.packageJSON?.version ?? 'unknown'))));
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.openRepository', () => openRepository()));
+
+    const updater = new Updater(context, logger);
+    context.subscriptions.push(updater);
+    context.subscriptions.push(vscode.commands.registerCommand('kasugai.checkForUpdates', () => updater.check(true)));
+    updater.checkInBackground();
 
     // Read by the start-up tests
     return { resolverRegistered };

@@ -35,6 +35,10 @@ A *kasugai* (鎹) is the iron staple Japanese carpenters drive across two timber
 | **VSCodium** | Download `kasugai-ssh-<version>.vsix` from [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and run `codium --install-extension kasugai-ssh-<version>.vsix`. (Publishing on Open VSX is in progress.) |
 | **VS Code** | Download `kasugai-ssh-<version>.vsix` from [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and run `code --install-extension kasugai-ssh-<version>.vsix`. (The VS Code Marketplace does not accept extensions that need the API described below.) |
 
+### Updates
+
+Editors only update extensions that come from their store, so Kasugai updates itself: once a day it checks [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and offers a new version. Choose **Update**: it downloads the `.vsix`, verifies it against the release's `SHA256SUMS` and installs it. Then reload the window. You can also run **Kasugai: Check for Updates...**, or turn the check off with `"kasugai.updateCheck": "off"`.
+
 ### One-time setup
 
 Remote windows depend on an editor API that VSCodium and VS Code only enable for extensions listed in `argv.json`. **On first start, Kasugai offers to add itself there for you.** Choose *Enable Kasugai*, then quit and restart the editor (reloading the window is not enough).
@@ -53,6 +57,7 @@ To do it by hand, run **Preferences: Configure Runtime Arguments**, add the foll
 - The **Remote Explorer** lists your SSH hosts and recently opened folders under *SSH Targets (Kasugai)*.
 - **Kasugai: Show Log** shows the connection log.
 - **Kasugai: Kill Server on Host...** restarts a stuck remote server.
+- **Kasugai: Check for Updates...** looks for a new release on GitHub.
 - **Kasugai: Report an Issue** / **Kasugai: Open on GitHub**: send feedback (also in the *SSH Targets* view menu).
 
 Kasugai uses its own remote type (`kasugai-ssh`), so it can be installed next to other SSH remote extensions without conflict.
@@ -71,6 +76,7 @@ Kasugai uses its own remote type (`kasugai-ssh`), so it can be installed next to
 | `kasugai.keepAliveCountMax` | `3` | Unanswered keepalives before reconnecting. `ServerAliveCountMax` wins. |
 | `kasugai.reconnectTimeout` | `3600` | Seconds to keep trying to reconnect. `0` disables automatic reconnection. |
 | `kasugai.connectTimeout` | `60` | Seconds allowed for connecting and logging in. |
+| `kasugai.updateCheck` | `notify` | Check GitHub Releases once a day and offer updates. `off` disables it. |
 | `kasugai.localServerDownload` | `auto` | `auto`: download on the host, fall back to this machine. `always`: always download here and upload. `off`: host only. |
 | `kasugai.configFile` | | Custom SSH config file. |
 | `kasugai.verifyUnknownHosts` / `kasugai.verifyKnownHosts` | `ask` / `reject` | Host key checking policy. |

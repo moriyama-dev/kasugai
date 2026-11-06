@@ -35,6 +35,10 @@
 | **VSCodium** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`codium --install-extension kasugai-ssh-<版>.vsix` を実行します。（Open VSX への公開は準備中です） |
 | **VS Code** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`code --install-extension kasugai-ssh-<版>.vsix` を実行します。（下で説明する特別な API を使う拡張機能は、VS Code Marketplace には載せられないためです） |
 
+### 更新
+
+エディターが自動で更新するのは、ストアから入れた拡張機能だけです。そこで Kasugai は、自分で更新を確認します。1日に1回 [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) を確認し、新しい版があれば通知します。「Update」を押すと、.vsix をダウンロードし、リリースに付いている `SHA256SUMS` と照らし合わせて壊れていないことを確かめてから、インストールします。そのあとウィンドウを再読み込みしてください。**Kasugai: Check for Updates...** で手動でも確認できます。確認を止めるには `"kasugai.updateCheck": "off"` にします。
+
 ### 最初に一度だけ必要な設定
 
 リモートのウィンドウを開くには、エディターの特別な API が必要です。VSCodium と VS Code は、`argv.json` に書かれた拡張機能にだけこの API を許可します。**Kasugai を初めて起動すると、この設定を自動で書き込むかどうかを聞いてきます。**「Enable Kasugai」を選んだら、エディターを一度終了して起動し直してください（ウィンドウの再読み込みでは足りません）。
@@ -53,6 +57,7 @@
 - **リモート エクスプローラー**の「SSH Targets (Kasugai)」に、ホストと最近開いたフォルダーが並びます。
 - **Kasugai: Show Log**：接続のログを表示します。
 - **Kasugai: Kill Server on Host...**：固まったリモートのサーバーを起動し直します。
+- **Kasugai: Check for Updates...**：GitHub に新しい版がないか確認します。
 - **Kasugai: Report an Issue** / **Kasugai: Open on GitHub**：問題の報告と GitHub のページです（「SSH Targets」ビューのメニューにもあります）。
 
 Kasugai は独自のリモートの種類（`kasugai-ssh`）を使います。ほかの SSH リモート拡張機能と一緒に入れても、ぶつかりません。
