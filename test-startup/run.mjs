@@ -27,18 +27,24 @@ const targets = (process.env.KASUGAI_STARTUP_TARGETS || 'vscodium,vscode').split
 async function downloadVSCodium() {
     const platform = process.platform === 'darwin' ? 'darwin' : process.platform === 'win32' ? 'win32' : 'linux';
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
-    const release = await (await fetch('https://api.github.com/repos/VSCodium/vscodium/releases/latest', { headers: { accept: 'application/vnd.github+json' } })).json();
-    const suffix = platform === 'darwin' ? `VSCodium-darwin-${arch}-${release.tag_name}.zip` : `VSCodium-linux-${arch}-${release.tag_name}.tar.gz`;
-    const asset = release.assets.find(a => a.name === suffix);
-    if (!asset) {
-        throw new Error(`No VSCodium asset ${suffix}`);
+    // The "latest" page redirects to the tag. Unlike the REST API it has no
+    // anonymous rate limit, which shared CI runners hit quickly.
+    const latest = await fetch('https://github.com/VSCodium/vscodium/releases/latest', { redirect: 'manual' });
+    const tag = (latest.headers.get('location') || '').split('/').pop();
+    if (!tag) {
+        throw new Error(`Could not find the latest VSCodium release (HTTP ${latest.status})`);
     }
-    const dir = join(cache, `vscodium-${release.tag_name}-${platform}-${arch}`);
+    const name = platform === 'darwin' ? `VSCodium-darwin-${arch}-${tag}.zip` : `VSCodium-linux-${arch}-${tag}.tar.gz`;
+    const asset = { name, browser_download_url: `https://github.com/VSCodium/vscodium/releases/download/${tag}/${name}` };
+    const dir = join(cache, `vscodium-${tag}-${platform}-${arch}`);
     if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
         const archive = join(dir, asset.name);
         console.log(`Downloading ${asset.browser_download_url}`);
         const response = await fetch(asset.browser_download_url);
+        if (!response.ok) {
+            throw new Error(`Downloading ${asset.name} failed: HTTP ${response.status}`);
+        }
         await pipeline(Readable.fromWeb(response.body), createWriteStream(archive));
         if (archive.endsWith('.zip')) {
             execFileSync('ditto', ['-x', '-k', archive, dir]);
