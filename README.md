@@ -32,7 +32,7 @@ A *kasugai* (鎹) is the iron staple Japanese carpenters drive across two timber
 
 | Editor | How |
 |---|---|
-| **VSCodium** | Search for **Kasugai** in the Extensions view (Open VSX), or run `codium --install-extension moriyama-dev.kasugai-ssh`. |
+| **VSCodium** | Download `kasugai-ssh-<version>.vsix` from [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and run `codium --install-extension kasugai-ssh-<version>.vsix`. (Publishing on Open VSX is in progress.) |
 | **VS Code** | Download `kasugai-ssh-<version>.vsix` from [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and run `code --install-extension kasugai-ssh-<version>.vsix`. (The VS Code Marketplace does not accept extensions that need the API described below.) |
 
 ### One-time setup

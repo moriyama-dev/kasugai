@@ -32,7 +32,7 @@
 
 | エディター | 方法 |
 |---|---|
-| **VSCodium** | 拡張機能ビューで **Kasugai** を検索（Open VSX）するか、`codium --install-extension moriyama-dev.kasugai-ssh` を実行します。 |
+| **VSCodium** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`codium --install-extension kasugai-ssh-<版>.vsix` を実行します。（Open VSX への公開は準備中です） |
 | **VS Code** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`code --install-extension kasugai-ssh-<版>.vsix` を実行します。（下で説明する特別な API を使う拡張機能は、VS Code Marketplace には載せられないためです） |
 
 ### 最初に一度だけ必要な設定
