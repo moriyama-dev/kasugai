@@ -1,3 +1,4 @@
+/* global console */
 // Writes THIRD_PARTY_NOTICES.md with the license text of every runtime
 // dependency bundled into lib/extension.js.
 import { execFileSync } from 'node:child_process';
