@@ -58,7 +58,9 @@ print_install_results_and_exit() {
     }
 }
 
-describe.skipIf(process.platform === 'win32')('server startup readiness', () => {
+// Each case runs the real readiness loop in bash (up to 175 rounds), which can take
+// more than Vitest's default 5 s on a busy macOS runner. spawnSync stops it at 10 s.
+describe.skipIf(process.platform === 'win32')('server startup readiness', { timeout: 20_000 }, () => {
     it('waits for log creation and then for the listening address', () => {
         const result = checkStartup('delayed');
         expect(result.status).toBe(0);
