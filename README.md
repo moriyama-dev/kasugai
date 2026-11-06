@@ -35,6 +35,26 @@ A *kasugai* (鎹) is the iron staple Japanese carpenters drive across two timber
 | **VSCodium** | Download `kasugai-ssh-<version>.vsix` from [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and run `codium --install-extension kasugai-ssh-<version>.vsix`. (Publishing on Open VSX is in progress.) |
 | **VS Code** | Download `kasugai-ssh-<version>.vsix` from [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and run `code --install-extension kasugai-ssh-<version>.vsix`. (The VS Code Marketplace does not accept extensions that need the API described below.) |
 
+Kasugai works the same on Windows, macOS and Linux (including Ubuntu). It uses the `ssh` client that comes with the system: built in on macOS and on Windows 10/11, and in the `openssh-client` package on Ubuntu (`sudo apt install openssh-client` if `ssh` is missing).
+
+**The easiest way, on any OS:** download `kasugai-ssh-<version>.vsix` from the [latest release](https://github.com/moriyama-dev/kasugai/releases/latest). In the editor, open the Extensions view (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>, or <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd> on macOS), click the **...** menu at the top and choose **Install from VSIX...**. Then follow [One-time setup](#one-time-setup) below. After that, Kasugai keeps itself up to date (see [Updates](#updates)).
+
+**With one command.** Use `codium` for VSCodium or `code` for VS Code.
+
+macOS and Ubuntu (Terminal):
+
+```sh
+url=$(curl -fsSL https://api.github.com/repos/moriyama-dev/kasugai/releases/latest | grep -o 'https://[^"]*\.vsix' | head -n 1) && curl -fsSL -o /tmp/kasugai-ssh.vsix "$url" && codium --install-extension /tmp/kasugai-ssh.vsix --force
+```
+
+Windows (PowerShell):
+
+```powershell
+$u = (Invoke-RestMethod https://api.github.com/repos/moriyama-dev/kasugai/releases/latest).assets | Where-Object name -like '*.vsix' | Select-Object -First 1 -ExpandProperty browser_download_url; Invoke-WebRequest $u -OutFile "$env:TEMP\kasugai-ssh.vsix"; codium --install-extension "$env:TEMP\kasugai-ssh.vsix" --force
+```
+
+If `codium` or `code` is not found: on macOS, open the editor, press <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and run **Shell Command: Install 'codium' command in PATH** (**'code'** in VS Code), then open a new Terminal window. On Windows, open a new PowerShell window after installing the editor. On Ubuntu, the `.deb`, Snap and apt packages add the command; with the `.tar.gz` build, use `bin/codium` or `bin/code` inside its folder.
+
 ### Updates
 
 Editors only update extensions that come from their store, so Kasugai updates itself: once a day it checks [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) and offers a new version. Choose **Update**: it downloads the `.vsix`, verifies it against the release's `SHA256SUMS` and installs it. Then reload the window. You can also run **Kasugai: Check for Updates...**, or turn the check off with `"kasugai.updateCheck": "off"`.
