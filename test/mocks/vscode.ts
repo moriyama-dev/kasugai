@@ -72,7 +72,13 @@ class ResolvedAuthority {
     }
 }
 
-const version = '1.126.04524';
+// eslint-disable-next-line prefer-const
+let version = '1.126.04524';
+
+/** Pretend to be another editor build (e.g. VS Code reports '1.126.0'). */
+function setVersion(value: string) {
+    version = value;
+}
 
 const window = {
     createOutputChannel: vi.fn(() => ({
@@ -132,6 +138,7 @@ export {
     RemoteAuthorityResolverError,
     ResolvedAuthority,
     window,
+    setVersion,
     version,
     workspace,
 };

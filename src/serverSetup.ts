@@ -264,7 +264,7 @@ export async function detectPlatform(conn: Pick<SSHClient, 'exec'>, platform: Re
 export async function installCodeServer(
     conn: SSHClient,
     serverDownloadUrlTemplate: string | undefined,
-    serverVersion: ServerVersion,
+    serverVersionSetting: ServerVersion | undefined,
     extensionIds: string[],
     envVariables: string[],
     sendEnvVars: Record<string, string>,
@@ -290,6 +290,10 @@ export async function installCodeServer(
     const scriptId = crypto.randomBytes(12).toString('hex');
 
     const vscodeServerConfig = await getServerConfig();
+    const serverVersion = serverVersionSetting || vscodeServerConfig.defaultServerVersion;
+    if (!vscodeServerConfig.isVSCodium) {
+        logger.trace(`Client is not VSCodium: using the ${serverVersion} VSCodium server release with validation '${vscodeServerConfig.serverValidation}'`);
+    }
 
     // Get the version and release
     const serverDownloadUrlTemplateFinal = serverDownloadUrlTemplate || vscodeServerConfig.serverDownloadUrlTemplate || DEFAULT_DOWNLOAD_URL_TEMPLATE;
@@ -321,7 +325,7 @@ export async function installCodeServer(
     if (useCache && parseServerInstallOutput(commandOutput.stdout, scriptId)?.exitCode === String(EXIT_PLATFORM_MISMATCH)) {
         logger.info('The remembered platform of this host is out of date, detecting it again');
         await platformCache!.set(undefined);
-        return installCodeServer(conn, serverDownloadUrlTemplate, serverVersion, extensionIds, envVariables, sendEnvVars, platform, useSocketPath, customInstallPath, logger, extensionPath, platformCache, transfer, localArchiveMode);
+        return installCodeServer(conn, serverDownloadUrlTemplate, serverVersionSetting, extensionIds, envVariables, sendEnvVars, platform, useSocketPath, customInstallPath, logger, extensionPath, platformCache, transfer, localArchiveMode);
     }
 
     const parsed = parseServerInstallOutput(commandOutput.stdout, scriptId);
@@ -340,7 +344,7 @@ export async function installCodeServer(
         await transfer.upload(localPath, remotePath);
         logger.info(`Uploaded the server archive in ${Date.now() - started}ms`);
 
-        return installCodeServer(conn, serverDownloadUrlTemplate, serverVersion, extensionIds, envVariables, sendEnvVars, platform, useSocketPath, customInstallPath, logger, extensionPath, platformCache, transfer, 'use-upload');
+        return installCodeServer(conn, serverDownloadUrlTemplate, serverVersionSetting, extensionIds, envVariables, sendEnvVars, platform, useSocketPath, customInstallPath, logger, extensionPath, platformCache, transfer, 'use-upload');
     }
 
     const result = parseInstallOutput(commandOutput, installOptions, scriptId, envVariables, logger);

@@ -255,15 +255,13 @@
 				},
 				"kasugai.serverVersion": {
 					"type": "string",
-					"description": "The version number of the remote VSCodium server. Can take the values: 'match' (default), 'latest', 'closest' or a specific version (e.g. '1.117.0').",
-					"scope": "application",
-					"default": "match"
+					"description": "Version of the VSCodium remote server to install: 'match', 'latest', 'closest' or a specific version (e.g. '1.117.0'). Default: 'match' in VSCodium, 'closest' in other editors such as VS Code.",
+					"scope": "application"
 				},
 				"kasugai.serverValidation": {
 					"type": "string",
-					"description": "Type of server validation: 'strict' (default) enforces that the remote and local server are the same version by matching the commit, 'force' modifies the remote commit to match the local server, 'skip' skips validation all together.",
+					"description": "How strictly the remote server must match this editor: 'strict' requires the same commit, 'force' rewrites the remote commit to match, 'skip' disables the check. Default: 'strict' in VSCodium, 'force' in other editors such as VS Code.",
 					"scope": "application",
-					"default": "strict",
 					"enum": [
 						"force",
 						"skip",
@@ -272,7 +270,7 @@
 					"enumDescriptions": [
 						"Modify the commit of the remote server.",
 						"The remote server won't validate the client.",
-						"The remote server and client's commits must match. (default)"
+						"The remote server and client's commits must match."
 					]
 				}
 			}

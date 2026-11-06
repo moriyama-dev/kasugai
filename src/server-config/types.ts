@@ -10,4 +10,8 @@ export type IServerConfig = {
     serverDataFolderName: string;
     serverDownloadUrlTemplate?: string;
     serverValidation: ServerValidation;
+    /** Server version to use when `kasugai.serverVersion` is not set. */
+    defaultServerVersion: ServerVersion;
+    /** The client is VSCodium itself, so its own server release can be used as is. */
+    isVSCodium: boolean;
 };

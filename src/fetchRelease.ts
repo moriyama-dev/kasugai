@@ -34,11 +34,29 @@ export function splitRelease(release: string): IRelease {
     return {version: `${major}.${minor}.${patchFused}`, build: buildFused ?? ''};
 }
 
+/** Release lookups of this session: the GitHub API is slow and rate limited. */
+const releaseCache = new Map<string, IRelease>();
+
 export async function fetchRelease(serverDownloadUrlTemplate: string, version: string, build: string, objective: ServerVersion, logger: Log): Promise<IRelease> {
     // Just match the given version/build
     if (objective === 'match') {
         return {version, build};
     }
+
+    const cacheKey = `${serverDownloadUrlTemplate}|${version}|${build}|${objective}`;
+    const cached = releaseCache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
+    const result = await lookupRelease(serverDownloadUrlTemplate, version, build, objective, logger);
+    if (result.version !== version || result.build !== build) {
+        // Only cache real lookups, not the fallback after a failed request
+        releaseCache.set(cacheKey, result);
+    }
+    return result;
+}
+
+async function lookupRelease(serverDownloadUrlTemplate: string, version: string, build: string, objective: ServerVersion, logger: Log): Promise<IRelease> {
 
     const downloadUrl = new URL(serverDownloadUrlTemplate);
     const hostname = downloadUrl.hostname;

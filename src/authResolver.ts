@@ -334,7 +334,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         const enableDynamicForwarding = getSetting<boolean>('enableDynamicForwarding', true);
         const enableAgentForwarding = getSetting<boolean>('enableAgentForwarding', true);
         const serverDownloadUrlTemplate = getSetting<string | undefined>('serverDownloadUrlTemplate', undefined);
-        const serverVersion = getSetting<ServerVersion>('serverVersion', 'match');
+        const serverVersion = getSetting<ServerVersion | undefined>('serverVersion', undefined);
         const defaultExtensions = getSetting<string[]>('defaultExtensions', []);
         const remotePlatformMap = getSetting<Record<string, RemotePlatform>>('remotePlatform', {});
         const remoteServerListenOnSocket = getSetting<boolean>('remoteServerListenOnSocket', false);
