@@ -120,10 +120,31 @@
 				},
 				"kasugai.connectTimeout": {
 					"type": "number",
-					"description": "Specifies the timeout in seconds used for the SSH command that connects to the remote.",
+					"description": "Timeout in seconds for establishing the SSH session (TCP connect, handshake and authentication).",
 					"default": 60,
 					"scope": "application",
 					"minimum": 1
+				},
+				"kasugai.keepAliveInterval": {
+					"type": "number",
+					"default": 15,
+					"minimum": 0,
+					"scope": "application",
+					"markdownDescription": "Seconds between SSH keepalive messages, used to notice a dead link quickly. `0` disables keepalives. A host's `ServerAliveInterval` in your SSH config takes precedence."
+				},
+				"kasugai.keepAliveCountMax": {
+					"type": "number",
+					"default": 3,
+					"minimum": 1,
+					"scope": "application",
+					"markdownDescription": "Unanswered keepalives before the connection is considered lost and Kasugai starts reconnecting. A host's `ServerAliveCountMax` in your SSH config takes precedence."
+				},
+				"kasugai.reconnectTimeout": {
+					"type": "number",
+					"default": 3600,
+					"minimum": 0,
+					"scope": "application",
+					"markdownDescription": "How long, in seconds, Kasugai keeps trying to re-establish a dropped SSH connection in the background. `0` disables automatic reconnection. The remote server keeps your session for up to 3 hours."
 				},
 				"kasugai.verifyUnknownHosts": {
 					"type": "string",
@@ -181,6 +202,22 @@
 					"type": "string",
 					"description": "The URL from where the vscode server will be downloaded. You can use the following variables and they will be replaced dynamically:\n- ${quality}: vscode server quality, e.g. stable or insiders\n- ${version}: vscode server version, e.g. 1.69.0\n- ${commit}: vscode server release commit\n- ${arch}: vscode server arch, e.g. x64, armhf, arm64\n- ${release}: release number, vscodium only https://github.com/VSCodium/vscodium/pull/1192",
 					"scope": "application"
+				},
+				"kasugai.localServerDownload": {
+					"type": "string",
+					"enum": [
+						"auto",
+						"always",
+						"off"
+					],
+					"default": "auto",
+					"scope": "application",
+					"enumDescriptions": [
+						"Download on the remote host; if that fails, download on this machine and upload it over SSH.",
+						"Always download on this machine and upload it over SSH (for hosts without internet access).",
+						"Only download on the remote host."
+					],
+					"markdownDescription": "Where the server is downloaded when a host does not have it yet. Uploading works for Linux, macOS and FreeBSD hosts."
 				},
 				"kasugai.remotePlatform": {
 					"type": "object",
@@ -310,6 +347,23 @@
 				"command": "kasugai.explorer.add",
 				"title": "Add New",
 				"icon": "$(plus)"
+			},
+			{
+				"command": "kasugai.killServer",
+				"title": "Kill Server on Host...",
+				"category": "Kasugai"
+			},
+			{
+				"command": "kasugai.reportIssue",
+				"title": "Report an Issue",
+				"category": "Kasugai",
+				"icon": "$(report)"
+			},
+			{
+				"command": "kasugai.openRepository",
+				"title": "Open on GitHub",
+				"category": "Kasugai",
+				"icon": "$(github)"
 			}
 		],
 		"resourceLabelFormatters": [
@@ -345,6 +399,11 @@
 					"command": "kasugai.showLog",
 					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@4"
+				},
+				{
+					"command": "kasugai.killServer",
+					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
+					"group": "remote_20_ssh_1general@5"
 				},
 				{
 					"command": "kasugai.openEmptyWindow",
@@ -409,6 +468,10 @@
 				{
 					"command": "kasugai.explorer.deleteFolderHistoryItem",
 					"when": "false"
+				},
+				{
+					"command": "kasugai.killServer",
+					"when": "remoteName =~ /^kasugai-ssh$/"
 				}
 			],
 			"view/title": [
@@ -426,6 +489,16 @@
 					"command": "kasugai.explorer.refresh",
 					"when": "view == kasugaiHosts",
 					"group": "navigation"
+				},
+				{
+					"command": "kasugai.reportIssue",
+					"when": "view == kasugaiHosts",
+					"group": "kasugai@1"
+				},
+				{
+					"command": "kasugai.openRepository",
+					"when": "view == kasugaiHosts",
+					"group": "kasugai@2"
 				}
 			],
 			"view/item/context": [

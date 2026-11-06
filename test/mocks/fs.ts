@@ -10,6 +10,8 @@ const fs = {
 	chown: u(mfs.chown),
 	close: u(mfs.close),
 	copyFile: u(mfs.copyFile),
+	createReadStream: mfs.createReadStream,
+	createWriteStream: mfs.createWriteStream,
 	exists: u(mfs.exists),
 	fchmod: u(mfs.fchmod),
 	fchown: u(mfs.fchown),

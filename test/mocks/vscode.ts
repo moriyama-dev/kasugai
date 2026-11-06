@@ -26,6 +26,20 @@ class ExtensionContext {
         persistent: false,
         replace: vi.fn(),
     };
+    globalStorageUri = { fsPath: '/data/vscodium/globalStorage/moriyama-dev.kasugai-ssh' };
+    private readonly state = new Map<string, unknown>();
+    globalState = {
+        get: <T>(key: string, defaultValue?: T) => (this.state.has(key) ? this.state.get(key) as T : defaultValue),
+        update: (key: string, value: unknown) => {
+            if (value === undefined) {
+                this.state.delete(key);
+            } else {
+                this.state.set(key, value);
+            }
+            return Promise.resolve();
+        },
+        keys: () => [...this.state.keys()],
+    };
 }
 
 enum ProgressLocation {

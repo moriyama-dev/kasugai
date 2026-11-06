@@ -94,7 +94,31 @@ export type ServerInstallOptions = {
     serverValidation: ServerValidation;
     serverPlatform: Platform;
     serverArch: Architecture;
+    /** The platform comes from the per-host cache and must be re-checked remotely. */
+    verifyPlatform?: boolean;
+    localArchiveMode?: LocalArchiveMode;
 };
+
+/** See LOCAL_ARCHIVE_MODE in server-setup.sh. */
+export type LocalArchiveMode = '' | 'skip-remote-download' | 'use-upload';
+
+/** `kasugai.localServerDownload` */
+export type LocalServerDownload = 'auto' | 'always' | 'off';
+
+/**
+ * Client-side download used when the remote host cannot fetch the server
+ * itself (no internet access, blocked by a proxy, no curl/wget).
+ */
+export interface LocalServerTransfer {
+    mode: LocalServerDownload;
+    /** Download `url` on this machine (cached) and return the local file path. */
+    download(url: string): Promise<string>;
+    /** Copy a local file to `remotePath` (a POSIX path, `$HOME` allowed) on the host. */
+    upload(localPath: string, remotePath: string): Promise<void>;
+}
+
+/** Exit code of the install script asking for a client-side download. */
+const EXIT_NEEDS_UPLOAD = 4;
 
 export type ServerInstallResult = {
     exitCode: number;
@@ -119,6 +143,15 @@ const DEFAULT_DOWNLOAD_URL_TEMPLATE = 'https://github.com/VSCodium/vscodium/rele
 export type Platform = 'alpine' | 'darwin' | 'dragonfly' | 'freebsd' | 'linux' | 'windows';
 export type Architecture = 'arm64' | 'armhf' | 'loong64' | 'ppc64le' | 'riscv64' | 's390x' | 'x64';
 export type Shell = 'cmd' | 'powershell' | 'bash';
+
+/** Exit code of the install script when a remembered platform is stale. */
+const EXIT_PLATFORM_MISMATCH = 3;
+
+/** Remembers the detected platform of each host between connections. */
+export interface PlatformCache {
+    get(): DetectedPlatform | undefined;
+    set(value: DetectedPlatform | undefined): void | Thenable<void>;
+}
 
 export type DetectedPlatform = {
     detectedPlatform: Platform;
@@ -239,9 +272,20 @@ export async function installCodeServer(
     useSocketPath: boolean,
     customInstallPath: string | undefined,
     logger: Log,
-    extensionPath: string
+    extensionPath: string,
+    platformCache?: PlatformCache,
+    transfer?: LocalServerTransfer,
+    localArchiveMode?: LocalArchiveMode
 ): Promise<ServerInstallResult> {
-    const { detectedPlatform, detectedArch, detectedShell: shell } = await detectPlatform(conn, platform, logger);
+    // Only POSIX results are cached: the bash install script can re-check them
+    // for free, the Windows paths cannot.
+    const cached = platform ? undefined : platformCache?.get();
+    const useCache = !!cached && cached.detectedPlatform !== 'windows';
+    const detected = useCache ? cached! : await detectPlatform(conn, platform, logger);
+    if (useCache) {
+        logger.trace(`Using remembered platform: ${detected.detectedPlatform}, ${detected.detectedArch}`);
+    }
+    const { detectedPlatform, detectedArch, detectedShell: shell } = detected;
 
     const scriptId = crypto.randomBytes(12).toString('hex');
 
@@ -268,11 +312,42 @@ export async function installCodeServer(
         serverValidation: vscodeServerConfig.serverValidation,
         serverPlatform: detectedPlatform,
         serverArch: detectedArch,
+        verifyPlatform: useCache,
+        localArchiveMode: localArchiveMode ?? (transfer?.mode === 'always' ? 'skip-remote-download' : ''),
     };
 
     const commandOutput = await runInstallScript(conn, detectedPlatform, shell, installOptions, vscodeServerConfig, scriptId, logger, extensionPath);
 
-    return parseInstallOutput(commandOutput, installOptions, scriptId, envVariables, logger);
+    if (useCache && parseServerInstallOutput(commandOutput.stdout, scriptId)?.exitCode === String(EXIT_PLATFORM_MISMATCH)) {
+        logger.info('The remembered platform of this host is out of date, detecting it again');
+        await platformCache!.set(undefined);
+        return installCodeServer(conn, serverDownloadUrlTemplate, serverVersion, extensionIds, envVariables, sendEnvVars, platform, useSocketPath, customInstallPath, logger, extensionPath, platformCache, transfer, localArchiveMode);
+    }
+
+    const parsed = parseServerInstallOutput(commandOutput.stdout, scriptId);
+    if (parsed?.exitCode === String(EXIT_NEEDS_UPLOAD) && detectedPlatform !== 'windows') {
+        if (!transfer || transfer.mode === 'off' || installOptions.localArchiveMode === 'use-upload') {
+            logger.trace('Server install command stdout:', commandOutput.stdout);
+            throw new ServerInstallError('The remote host could not download the server. Enable "kasugai.localServerDownload" to download it on this machine instead.');
+        }
+
+        // The script reports the platform it would download for (e.g. alpine)
+        const downloadUrl = expandDownloadUrl(installOptions.serverDownloadUrlTemplate, installOptions, parsed.platform || detectedPlatform);
+        logger.info(`The remote host could not download the server; downloading it locally from ${downloadUrl}`);
+        const started = Date.now();
+        const localPath = await transfer.download(downloadUrl);
+        const remotePath = `${bashServerDataDir(installOptions)}/kasugai-upload-${installOptions.commit}.tar.gz`;
+        await transfer.upload(localPath, remotePath);
+        logger.info(`Uploaded the server archive in ${Date.now() - started}ms`);
+
+        return installCodeServer(conn, serverDownloadUrlTemplate, serverVersion, extensionIds, envVariables, sendEnvVars, platform, useSocketPath, customInstallPath, logger, extensionPath, platformCache, transfer, 'use-upload');
+    }
+
+    const result = parseInstallOutput(commandOutput, installOptions, scriptId, envVariables, logger);
+    if (!platform && !useCache && platformCache) {
+        await platformCache.set(detected);
+    }
+    return result;
 }
 
 async function runInstallScript(
@@ -411,11 +486,27 @@ function parseServerInstallOutput(str: string, scriptId: string): { [k: string]:
     return resultMap;
 }
 
-function generateBashInstallScript({ id, quality, version, commit, release, extensionIds, envVariables, sendEnvVars, useSocketPath, serverApplicationName, serverDataFolderName, serverDownloadUrlTemplate, customInstallPath, serverValidation, serverPlatform, serverArch }: ServerInstallOptions, extensionPath: string): string {
-    const extensions = extensionIds.map(extId => '--install-extension ' + extId).join(' ');
-    const serverDataDir = customInstallPath
+/** Same substitution as the install script performs remotely. */
+export function expandDownloadUrl(template: string, options: Pick<ServerInstallOptions, 'quality' | 'version' | 'commit' | 'release' | 'serverArch'>, os: string): string {
+    return template
+        .replace(/\$\{quality\}/g, options.quality)
+        .replace(/\$\{version\}/g, options.version)
+        .replace(/\$\{commit\}/g, options.commit)
+        .replace(/\$\{os\}/g, os)
+        .replace(/\$\{arch\}/g, options.serverArch)
+        .replace(/\$\{release\}/g, options.release ?? '');
+}
+
+/** SERVER_DATA_DIR of the bash install script, as a shell expression. */
+function bashServerDataDir({ customInstallPath, serverDataFolderName }: Pick<ServerInstallOptions, 'customInstallPath' | 'serverDataFolderName'>): string {
+    return customInstallPath
         ? customInstallPath.replace(/^~(?=\/|$)/, '$HOME')
         : `$HOME/${serverDataFolderName}`;
+}
+
+function generateBashInstallScript({ id, quality, version, commit, release, extensionIds, envVariables, sendEnvVars, useSocketPath, serverApplicationName, serverDataFolderName, serverDownloadUrlTemplate, customInstallPath, serverValidation, serverPlatform, serverArch, verifyPlatform, localArchiveMode }: ServerInstallOptions, extensionPath: string): string {
+    const extensions = extensionIds.map(extId => '--install-extension ' + extId).join(' ');
+    const serverDataDir = bashServerDataDir({ customInstallPath, serverDataFolderName });
     const listenFlag = useSocketPath
         ? `--socket-path="$TMP_DIR/vscode-server-sock-${crypto.randomUUID()}"`
         : '--port=0';
@@ -441,6 +532,8 @@ function generateBashInstallScript({ id, quality, version, commit, release, exte
         SERVER_CONNECTION_TOKEN: crypto.randomUUID(),
         SERVER_PLATFORM: serverPlatform,
         SERVER_ARCH: serverArch,
+        VERIFY_PLATFORM: verifyPlatform ? 'true' : 'false',
+        LOCAL_ARCHIVE_MODE: localArchiveMode ?? '',
     }, extensionPath);
 }
 

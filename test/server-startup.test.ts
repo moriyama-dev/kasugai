@@ -69,7 +69,7 @@ describe.skipIf(process.platform === 'win32')('server startup readiness', () => 
         const result = checkStartup('missing');
         expect(result.status).toBe(1);
         expect(result.output).toContain('Error: server log file not found');
-        expect(result.output).toContain('result=1 ticks=35 listening=');
+        expect(result.output).toContain('result=1 ticks=175 listening=');
         expect(result.logExists).toBe(false);
     });
 
@@ -77,7 +77,7 @@ describe.skipIf(process.platform === 'win32')('server startup readiness', () => 
         const result = checkStartup('empty');
         expect(result.status).toBe(1);
         expect(result.output).toContain('Error: server did not start successfully');
-        expect(result.output).toContain('result=1 ticks=35 listening=');
+        expect(result.output).toContain('result=1 ticks=175 listening=');
         expect(result.logExists).toBe(true);
     });
 

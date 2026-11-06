@@ -20,10 +20,11 @@ import { gatherIdentityFiles, SSHKey } from './ssh/identityFiles';
 import { untildify, exists as fileExists } from './common/files';
 import { findRandomPort } from './common/ports';
 import { disposeAll } from './common/disposable';
-import { installCodeServer, ServerInstallError, findServerInstallPath } from './serverSetup';
+import { installCodeServer, ServerInstallError, findServerInstallPath, type DetectedPlatform, type LocalServerDownload, type LocalServerTransfer, type PlatformCache } from './serverSetup';
 import type { RemotePlatform } from './types';
 import { isWindows } from './common/platform';
 import * as os from 'os';
+import * as path from 'path';
 
 const PASSWORD_RETRY_COUNT = 3;
 const PASSPHRASE_RETRY_COUNT = 3;
@@ -248,6 +249,9 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
 
     private labelFormatterDisposable: vscode.Disposable | undefined;
     private connectionKey: string | undefined;
+    /** Where the remote server keeps its pid/log/token files, as a shell path. */
+    private serverDataDir: string | undefined;
+    private remotePlatform: string | undefined;
     /** Private keys parsed during this window, kept in memory only. */
     private readonly unlockedKeys = new Map<string, ParsedKey>();
     private statusItem: vscode.StatusBarItem | undefined;
@@ -586,7 +590,9 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
             remoteServerListenOnSocket,
             customInstallPath,
             this.logger,
-            this.context.extensionPath
+            this.context.extensionPath,
+            this.platformCacheFor(destination.hostname),
+            this.localServerTransfer()
         );
 
         // Update terminal env variables
@@ -605,6 +611,11 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                 socks: true
             });
         }
+
+        this.remotePlatform = installResult.platform;
+        this.serverDataDir = installResult.logFile && installResult.logFile.startsWith('/')
+            ? installResult.logFile.slice(0, installResult.logFile.lastIndexOf('/'))
+            : undefined;
 
         const tunnelConfig = await this.openTunnel(0, installResult.listeningOn);
         this.tunnels.push(tunnelConfig);
@@ -682,6 +693,103 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         if (hideAfterMs) {
             this.statusHideTimer = setTimeout(() => this.statusItem?.hide(), hideAfterMs);
         }
+    }
+
+    private platformCacheFor(hostname: string): PlatformCache | undefined {
+        const state = this.context.globalState as vscode.Memento | undefined;
+        if (!state) {
+            return undefined;
+        }
+        const key = `kasugai.platform.${hostname}`;
+        return {
+            get: () => state.get<DetectedPlatform>(key),
+            set: (value) => state.update(key, value),
+        };
+    }
+
+    /**
+     * Stop the remote server(s) of this user on the connected host, then reload
+     * so a fresh one is started. The cure for a wedged server or an "unknown
+     * reconnection token" without logging in by hand.
+     */
+    async killServerOnHost() {
+        if (vscode.env.remoteName !== REMOTE_SSH_AUTHORITY || !this.sshConnection || !this.serverDataDir) {
+            void vscode.window.showInformationMessage('Kasugai: this command works in a window connected with Kasugai.');
+            return;
+        }
+        if (this.remotePlatform === 'windows') {
+            void vscode.window.showInformationMessage('Kasugai: stopping the server is not supported on Windows hosts yet.');
+            return;
+        }
+        const confirm = 'Stop Server and Reload';
+        const answer = await vscode.window.showWarningMessage('Stop the remote server on this host? Unsaved changes in remote editors may be lost.', { modal: true }, confirm);
+        if (answer !== confirm) {
+            return;
+        }
+        // Escape everything double quotes would still interpret
+        const dataDir = this.serverDataDir.replace(/["$`\\]/g, '\\$&');
+        const script = `d="${dataDir}"; for f in "$d"/.*.pid; do [ -f "$f" ] || continue; kill "$(cat "$f")" 2>/dev/null; rm -f "$f"; done; echo kasugai-killed`;
+        try {
+            const { stdout } = await this.sshConnection.exec(`sh -c '${script.replace(/'/g, `'\\''`)}'`);
+            this.logger.info(`Stopped the remote server: ${stdout.trim()}`);
+        } catch (e) {
+            this.logger.error('Could not stop the remote server', e);
+        }
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }
+
+    /**
+     * Download the server on this machine and push it over the SSH session,
+     * for hosts that cannot reach the download site themselves.
+     */
+    private localServerTransfer(): LocalServerTransfer | undefined {
+        const mode = getSetting<LocalServerDownload>('localServerDownload', 'auto');
+        const storage = (this.context as { globalStorageUri?: vscode.Uri }).globalStorageUri;
+        if (mode === 'off' || !storage) {
+            return mode === 'off' ? { mode, download: () => Promise.reject(new Error('disabled')), upload: () => Promise.reject(new Error('disabled')) } : undefined;
+        }
+        const cacheDir = path.join(storage.fsPath, 'server-cache');
+
+        return {
+            mode,
+            download: async (url: string) => {
+                const name = decodeURIComponent(new URL(url).pathname.split('/').pop() || 'server.tar.gz').replace(/[^\w.-]/g, '_');
+                const target = path.join(cacheDir, name);
+                if ((await fs.promises.stat(target).catch(() => undefined))?.size) {
+                    this.logger.info(`Using the cached server archive ${target}`);
+                    return target;
+                }
+                await fs.promises.mkdir(cacheDir, { recursive: true });
+                const response = await fetch(url, { signal: AbortSignal.timeout(10 * 60_000) });
+                if (!response.ok || !response.body) {
+                    throw new ServerInstallError(`Downloading the server failed: HTTP ${response.status} for ${url}`);
+                }
+                const partial = `${target}.${process.pid}.part`;
+                await stream.promises.pipeline(stream.Readable.fromWeb(response.body as import('stream/web').ReadableStream), fs.createWriteStream(partial));
+                await fs.promises.rename(partial, target);
+                return target;
+            },
+            upload: async (localPath: string, remotePath: string) => {
+                if (!(this.sshConnection instanceof SSHConnection)) {
+                    throw new ServerInstallError('Uploading the server is not supported with the native ssh client');
+                }
+                // Inside double quotes so $HOME expands; nothing else may
+                const quoted = remotePath.replace(/["`\\]/g, '\\$&');
+                const script = `p="${quoted}"; mkdir -p "$(dirname "$p")" && cat > "$p.part" && mv -f "$p.part" "$p" && echo kasugai-uploaded`;
+                const channel = await this.sshConnection.execChannel(`sh -c '${script.replace(/'/g, `'\\''`)}'`) as unknown as ssh2.ClientChannel;
+                const output = await new Promise<string>((resolve, reject) => {
+                    let out = '';
+                    channel.on('data', (d: Buffer) => { out += d.toString(); });
+                    channel.stderr.on('data', (d: Buffer) => this.logger.trace(`upload stderr: ${d.toString().trimEnd()}`));
+                    channel.on('close', () => resolve(out));
+                    channel.on('error', reject);
+                    stream.promises.pipeline(fs.createReadStream(localPath), channel).catch(reject);
+                });
+                if (!output.includes('kasugai-uploaded')) {
+                    throw new ServerInstallError('Uploading the server archive to the remote host failed');
+                }
+            },
+        };
     }
 
     /** Tear down everything a previous resolve() set up. */

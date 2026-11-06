@@ -3,6 +3,7 @@ import { Log } from './common/logger';
 import { RemoteSSHResolver, REMOTE_SSH_AUTHORITY } from './authResolver';
 import { openSSHConfigFile, promptOpenRemoteSSHWindow } from './commands';
 import { HostTreeDataProvider } from './hostTreeView';
+import { openRepository, reportIssue } from './feedback';
 import { getRemoteWorkspaceLocationData, RemoteLocationHistory } from './remoteLocationHistory';
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -27,6 +28,9 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.openEmptyWindowInCurrentWindow', () => promptOpenRemoteSSHWindow(true)));
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.openConfigFile', () => openSSHConfigFile()));
     context.subscriptions.push(vscode.commands.registerCommand('kasugai.showLog', () => logger.show()));
+    context.subscriptions.push(vscode.commands.registerCommand('kasugai.killServer', () => remoteSSHResolver.killServerOnHost()));
+    context.subscriptions.push(vscode.commands.registerCommand('kasugai.reportIssue', () => reportIssue(String(context.extension?.packageJSON?.version ?? 'unknown'))));
+    context.subscriptions.push(vscode.commands.registerCommand('kasugai.openRepository', () => openRepository()));
 }
 
 export function deactivate() {

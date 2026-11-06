@@ -28,6 +28,15 @@ SERVER_CONNECTION_TOKEN=
 SERVER_DOWNLOAD_URL=
 SERVER_VALIDATION_FLAG="%%SERVER_VALIDATION_FLAG%%"
 
+# Kasugai: how the server archive reaches this host.
+#   ""                      download it here (default)
+#   "skip-remote-download"  let the client download it (no internet here)
+#   "use-upload"            the client has uploaded it to $LOCAL_ARCHIVE
+LOCAL_ARCHIVE_MODE="%%LOCAL_ARCHIVE_MODE%%"
+LOCAL_ARCHIVE="$SERVER_DATA_DIR/kasugai-upload-$DISTRO_COMMIT.tar.gz"
+# Exit code asking the client to download the archive and upload it
+EXIT_NEEDS_UPLOAD=4
+
 LISTENING_ON=
 OS_RELEASE_ID=
 PLATFORM=$SERVER_PLATFORM
@@ -55,6 +64,40 @@ print_install_results_and_exit() {
   echo "%%SCRIPT_ID%%: end"
   exit 0
 }
+
+# Kasugai remembers the platform of each host to skip the detection round
+# trips. Make sure the remembered value still holds before using it.
+verify_cached_platform() {
+  if [[ "%%VERIFY_PLATFORM%%" != "true" ]]; then
+    return 0
+  fi
+
+  local kernel machine
+  case "$(uname -s 2>/dev/null)" in
+    Linux) kernel=linux ;;
+    Darwin) kernel=darwin ;;
+    FreeBSD) kernel=freebsd ;;
+    DragonFly) kernel=dragonfly ;;
+    *) kernel=unknown ;;
+  esac
+  case "$(uname -m 2>/dev/null)" in
+    x86_64 | amd64) machine=x64 ;;
+    armv7l | armv8l) machine=armhf ;;
+    arm64 | aarch64) machine=arm64 ;;
+    ppc64le) machine=ppc64le ;;
+    riscv64) machine=riscv64 ;;
+    loongarch64) machine=loong64 ;;
+    s390x) machine=s390x ;;
+    *) machine=unknown ;;
+  esac
+
+  [[ "$kernel" == "$SERVER_PLATFORM" ]] && [[ "$machine" == "$SERVER_ARCH" ]]
+}
+
+if ! verify_cached_platform; then
+  echo "Remembered platform $SERVER_PLATFORM/$SERVER_ARCH no longer matches this host"
+  print_install_results_and_exit 3
+fi
 
 # Validate the commit of the installed server against the expected one (DISTRO_COMMIT)
 #
@@ -163,21 +206,36 @@ if [[ ! -f $SERVER_SCRIPT ]]; then
 
   pushd "$SERVER_DIR" > /dev/null || exit
 
-  if command -v wget >/dev/null 2>&1; then
-    wget --tries=3 --timeout=10 --continue --no-verbose -O vscode-server.tar.gz "$SERVER_DOWNLOAD_URL"
+  DOWNLOAD_STATUS=0
+  if [[ "$LOCAL_ARCHIVE_MODE" == "use-upload" ]]; then
+    if [[ ! -f "$LOCAL_ARCHIVE" ]]; then
+      echo "Error: uploaded server archive not found at $LOCAL_ARCHIVE"
+      print_install_results_and_exit 1
+    fi
+    echo "Using the server archive uploaded by the client"
+    mv -f "$LOCAL_ARCHIVE" vscode-server.tar.gz || DOWNLOAD_STATUS=1
+  elif [[ "$LOCAL_ARCHIVE_MODE" == "skip-remote-download" ]]; then
+    echo "Server download delegated to the client"
+    print_install_results_and_exit $EXIT_NEEDS_UPLOAD
+  elif command -v wget >/dev/null 2>&1; then
+    wget --tries=3 --timeout=10 --continue --no-verbose -O vscode-server.tar.gz "$SERVER_DOWNLOAD_URL" || DOWNLOAD_STATUS=$?
   elif command -v curl >/dev/null 2>&1; then
-    curl --retry 3 --connect-timeout 10 --location --show-error --silent --output vscode-server.tar.gz "$SERVER_DOWNLOAD_URL"
+    curl --fail --retry 3 --connect-timeout 10 --location --show-error --silent --output vscode-server.tar.gz "$SERVER_DOWNLOAD_URL" || DOWNLOAD_STATUS=$?
   elif command -v fetch >/dev/null 2>&1; then
-    fetch --retry --timeout=10 --quiet --output=vscode-server.tar.gz "$SERVER_DOWNLOAD_URL"
+    fetch --retry --timeout=10 --quiet --output=vscode-server.tar.gz "$SERVER_DOWNLOAD_URL" || DOWNLOAD_STATUS=$?
   else
     echo "Error: no tool to download server binary"
-    print_install_results_and_exit 1
+    print_install_results_and_exit $EXIT_NEEDS_UPLOAD
   fi
 
-  if (( $? > 0 )); then
-    echo "Error downloading server from $SERVER_DOWNLOAD_URL"
+  if (( DOWNLOAD_STATUS > 0 )); then
     rm -rf vscode-server.tar.gz
-    print_install_results_and_exit 1
+    if [[ "$LOCAL_ARCHIVE_MODE" == "use-upload" ]]; then
+      echo "Error: could not move the uploaded server archive into place"
+      print_install_results_and_exit 1
+    fi
+    echo "Error downloading server from $SERVER_DOWNLOAD_URL"
+    print_install_results_and_exit $EXIT_NEEDS_UPLOAD
   fi
 
   tar -xOf vscode-server.tar.gz > /dev/null 2>&1 || (
@@ -215,6 +273,9 @@ if [[ ! -f $SERVER_SCRIPT ]]; then
 else
   echo "Server script already installed in $SERVER_SCRIPT"
 fi
+
+# An upload is only needed once; never leave one behind
+rm -f "$LOCAL_ARCHIVE" 2>/dev/null
 
 # Modify the commit in the remote server to match the local value
 if [[ "$MODIFY_PRODUCT_JSON" == "true" ]]; then
@@ -260,7 +321,8 @@ else
   print_install_results_and_exit 1
 fi
 
-for i in {1..35}; do
+# Poll often: the server is usually up within a few hundred milliseconds
+for i in {1..175}; do
   if [[ -f $SERVER_LOGFILE ]]; then
     if [[ -n "$(cat $SERVER_LOGFILE | grep 'Error loading shared library libstdc++.so')" ]]; then
       echo "Error: missing libstdc++"
@@ -275,7 +337,7 @@ for i in {1..35}; do
     fi
   fi
 
-  sleep 0.5
+  sleep 0.1
 done
 
 if [[ -f $SERVER_LOGFILE ]]; then

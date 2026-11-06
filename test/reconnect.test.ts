@@ -86,6 +86,7 @@ describe('reconnect', () => {
   let resolver: InstanceType<typeof RemoteSSHResolver>;
   let localPort: number;
   let token: string | undefined;
+  let extContext: InstanceType<typeof vscode.ExtensionContext>;
 
   beforeAll(async () => {
     vol.reset();
@@ -117,7 +118,8 @@ describe('reconnect', () => {
 
     logger = new Log('Kasugai');
     logger.capture();
-    resolver = new RemoteSSHResolver(new vscode.ExtensionContext(), logger);
+    extContext = new vscode.ExtensionContext();
+    resolver = new RemoteSSHResolver(extContext, logger);
 
     const result = await resolver.resolve(getRemoteAuthority('test'), new vscode.RemoteAuthorityResolverContext());
     localPort = result.port;
@@ -164,9 +166,23 @@ describe('reconnect', () => {
     const result = await resolver.resolve(getRemoteAuthority('test'), context);
 
     expect(logger.messages()).toContain('Reusing the open SSH connection to test');
+    expect(logger.messages()).toContain('Using remembered platform: linux');
     // The token is only regenerated when a new server process is started
     expect(result.connectionToken).toBe(token);
     expect(await probeServer(result.port)).toMatch(/^HTTP\/1\.[01] \d{3}/);
     console.log(`re-resolve took ${Date.now() - started}ms`);
+  }, 60_000);
+
+  it('detects the platform again when the remembered one is stale', async () => {
+    await extContext.globalState.update('kasugai.platform.test', { detectedPlatform: 'linux', detectedArch: 's390x', detectedShell: 'bash' });
+    const fresh = new RemoteSSHResolver(extContext, logger);
+    try {
+      const result = await fresh.resolve(getRemoteAuthority('test'), new vscode.RemoteAuthorityResolverContext());
+      expect(logger.messages()).toContain('The remembered platform of this host is out of date');
+      expect(result.connectionToken).toBe(token);
+      expect(extContext.globalState.get<{ detectedArch: string }>('kasugai.platform.test')?.detectedArch).not.toBe('s390x');
+    } finally {
+      fresh.dispose();
+    }
   }, 60_000);
 });
