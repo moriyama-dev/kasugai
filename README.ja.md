@@ -35,6 +35,26 @@
 | **VSCodium** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`codium --install-extension kasugai-ssh-<版>.vsix` を実行します。（Open VSX への公開は準備中です） |
 | **VS Code** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`code --install-extension kasugai-ssh-<版>.vsix` を実行します。（下で説明する特別な API を使う拡張機能は、VS Code Marketplace には載せられないためです） |
 
+Windows・macOS・Linux（Ubuntu を含む）のどれでも、同じように使えます。SSH の接続には OS に入っている `ssh` コマンドを使います。macOS と Windows 10/11 には最初から入っています。Ubuntu では `openssh-client` パッケージに入っています（`ssh` が無いときは `sudo apt install openssh-client`）。
+
+**一番簡単な方法（どの OS でも同じ）**：[最新のリリース](https://github.com/moriyama-dev/kasugai/releases/latest)から `kasugai-ssh-<版>.vsix` をダウンロードします。エディターで拡張機能ビューを開き（<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>、macOS は <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>）、上の「…」メニューから **Install from VSIX...**（VSIX からのインストール）を選んで、ダウンロードしたファイルを指定します。そのあと下の「[最初に一度だけ必要な設定](#最初に一度だけ必要な設定)」をします。以後の更新は Kasugai が自分で知らせます（「[更新](#更新)」）。
+
+**コマンド1行で入れる方法**：VSCodium は `codium`、VS Code は `code` を使います。
+
+macOS と Ubuntu（ターミナル）：
+
+```sh
+url=$(curl -fsSL https://api.github.com/repos/moriyama-dev/kasugai/releases/latest | grep -o 'https://[^"]*\.vsix' | head -n 1) && curl -fsSL -o /tmp/kasugai-ssh.vsix "$url" && codium --install-extension /tmp/kasugai-ssh.vsix --force
+```
+
+Windows（PowerShell）：
+
+```powershell
+$u = (Invoke-RestMethod https://api.github.com/repos/moriyama-dev/kasugai/releases/latest).assets | Where-Object name -like '*.vsix' | Select-Object -First 1 -ExpandProperty browser_download_url; Invoke-WebRequest $u -OutFile "$env:TEMP\kasugai-ssh.vsix"; codium --install-extension "$env:TEMP\kasugai-ssh.vsix" --force
+```
+
+`codium` や `code` が見つからないとき：macOS では、エディターで <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> を押して **Shell Command: Install 'codium' command in PATH**（VS Code は **'code'**）を実行し、ターミナルを開き直します。Windows では、エディターを入れたあとに PowerShell を開き直します。Ubuntu では .deb・Snap・apt で入れた場合はコマンドも入ります。.tar.gz 版の場合は、フォルダー内の `bin/codium` か `bin/code` を使います。
+
 ### 更新
 
 エディターが自動で更新するのは、ストアから入れた拡張機能だけです。そこで Kasugai は、自分で更新を確認します。1日に1回 [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) を確認し、新しい版があれば通知します。「Update」を押すと、.vsix をダウンロードし、リリースに付いている `SHA256SUMS` と照らし合わせて壊れていないことを確かめてから、インストールします。そのあとウィンドウを再読み込みしてください。**Kasugai: Check for Updates...** で手動でも確認できます。確認を止めるには `"kasugai.updateCheck": "off"` にします。
