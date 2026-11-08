@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { REMOTE_SSH_AUTHORITY } from './authResolver';
+import { isKasugaiAuthorityType } from './authResolver';
 import SSHDestination from './ssh/sshDestination';
 
 export class RemoteLocationHistory {
@@ -38,14 +38,14 @@ export class RemoteLocationHistory {
 
 export function getRemoteWorkspaceLocationData(): [string, string] | undefined {
     let location = vscode.workspace.workspaceFile;
-    if (location && location.scheme === 'vscode-remote' && location.authority.startsWith(REMOTE_SSH_AUTHORITY) && location.path.endsWith('.code-workspace')) {
+    if (location && location.scheme === 'vscode-remote' && isKasugaiAuthorityType(location.authority.split('+')[0]) && location.path.endsWith('.code-workspace')) {
         const [, host] = location.authority.split('+');
         const sshDest = SSHDestination.parseEncoded(host);
         return [sshDest.hostname, location.path];
     }
 
     location = vscode.workspace.workspaceFolders?.[0]?.uri;
-    if (location && location.scheme === 'vscode-remote' && location.authority.startsWith(REMOTE_SSH_AUTHORITY)) {
+    if (location && location.scheme === 'vscode-remote' && isKasugaiAuthorityType(location.authority.split('+')[0])) {
         const [, host] = location.authority.split('+');
         const sshDest = SSHDestination.parseEncoded(host);
         return [sshDest.hostname, location.path];

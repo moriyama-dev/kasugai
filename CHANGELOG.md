@@ -3,6 +3,15 @@ Changelog
 
 All notable changes to this project will be documented in this file.
 
+Unreleased
+----------
+
+### Added
+
+- A Kasugai icon in the Activity Bar. Its panel holds the *SSH Targets* list (moved from the Remote Explorer) and a *Feedback* form: pick bug / feature request / opinion, write it, and GitHub opens a pre-filled issue in the browser. The recent log can be attached with host names, user names, IP addresses, home folders, host key fingerprints and connection tokens masked, and previewed first. `Kasugai: Send Feedback...` opens the form.
+- `kasugai.handleSshRemote` (off by default): also open `ssh-remote+<host>` windows, such as those the Tailscale extension opens, when no other SSH remote extension is enabled.
+
+
 [v0.2.0](https://github.com/moriyama-dev/kasugai/releases/tag/v0.2.0) | 2026-11-06
 -----------------------------------------------------------------------------------
 

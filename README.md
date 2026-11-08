@@ -74,13 +74,17 @@ To do it by hand, run **Preferences: Configure Runtime Arguments**, add the foll
 ## Use
 
 - **Kasugai: Connect to Host...** (also in the remote indicator at the bottom left) opens a remote window. Hosts come from your `~/.ssh/config`.
-- The **Remote Explorer** lists your SSH hosts and recently opened folders under *SSH Targets (Kasugai)*.
+- The **Kasugai** icon in the Activity Bar (the left edge) opens a panel with your SSH hosts and recently opened folders (*SSH Targets*) and a *Feedback* form.
 - **Kasugai: Show Log** shows the connection log.
 - **Kasugai: Kill Server on Host...** restarts a stuck remote server.
 - **Kasugai: Check for Updates...** looks for a new release on GitHub.
-- **Kasugai: Report an Issue** / **Kasugai: Open on GitHub**: send feedback (also in the *SSH Targets* view menu).
+- **Kasugai: Send Feedback...** opens the *Feedback* form. **Kasugai: Report an Issue** / **Kasugai: Open on GitHub** go straight to GitHub.
 
 Kasugai uses its own remote type (`kasugai-ssh`), so it can be installed next to other SSH remote extensions without conflict.
+
+### Opening hosts from other extensions (Tailscale and others)
+
+Some extensions, such as the Tailscale extension, open SSH windows with the remote type `ssh-remote`, which belongs to the other SSH remote extensions. To open those windows with Kasugai, set `"kasugai.handleSshRemote": true` and disable the other SSH remote extensions (open-remote-ssh, Remote - SSH): only one extension can handle `ssh-remote`. The setting applies to windows opened after the change.
 
 ## SSH host requirements
 
@@ -96,6 +100,7 @@ Kasugai uses its own remote type (`kasugai-ssh`), so it can be installed next to
 | `kasugai.keepAliveCountMax` | `3` | Unanswered keepalives before reconnecting. `ServerAliveCountMax` wins. |
 | `kasugai.reconnectTimeout` | `3600` | Seconds to keep trying to reconnect. `0` disables automatic reconnection. |
 | `kasugai.connectTimeout` | `60` | Seconds allowed for connecting and logging in. |
+| `kasugai.handleSshRemote` | `false` | Also open `ssh-remote+<host>` windows (e.g. from the Tailscale extension). Disable other SSH remote extensions first. |
 | `kasugai.updateCheck` | `notify` | Check GitHub Releases once a day and offer updates. `off` disables it. |
 | `kasugai.localServerDownload` | `auto` | `auto`: download on the host, fall back to this machine. `always`: always download here and upload. `off`: host only. |
 | `kasugai.configFile` | | Custom SSH config file. |
@@ -128,7 +133,9 @@ Guides: [jump hosts](docs/jump-hosts.md), [GSSAPI / Kerberos](docs/gssapi-kerber
 
 ## Feedback
 
-Found a problem or have an idea? Use **Kasugai: Report an Issue** or open an issue on [GitHub](https://github.com/moriyama-dev/kasugai/issues). Please remove host names and user names from logs before posting.
+Found a problem or have an idea? Click the **Kasugai** icon in the Activity Bar and fill in the *Feedback* form. Choose the type (bug, feature request, opinion), write what happened, and press **Open on GitHub**: a new issue opens in your browser with your text, your editor and OS versions and, if you keep the box ticked, the recent Kasugai log. Host names, user names, IP addresses, home folders, host key fingerprints and connection tokens are masked first, and **Preview the log** shows exactly what will be attached. Nothing is sent until you press **Submit new issue** on GitHub.
+
+You can also open an issue on [GitHub](https://github.com/moriyama-dev/kasugai/issues) directly.
 
 ## Credits and license
 

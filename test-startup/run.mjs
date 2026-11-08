@@ -2,7 +2,7 @@
 // check that it activates, registers its commands and its SSH resolver.
 // No network services, secrets or SSH hosts are involved.
 import { execFileSync } from 'node:child_process';
-import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
@@ -80,6 +80,10 @@ for (const target of targets) {
         const label = `${target} (${proposedApi ? 'with' : 'without'} enable-proposed-api)`;
         console.log(`\n=== ${label} ===`);
         const extensionsDir = mkdtempSync(join(tmpdir(), 'kasugai-ext-'));
+        // Turn on the ssh-remote compatibility so its registration is checked too
+        const userDataDir = mkdtempSync(join(tmpdir(), 'kasugai-ud-'));
+        mkdirSync(join(userDataDir, 'User'), { recursive: true });
+        writeFileSync(join(userDataDir, 'User', 'settings.json'), JSON.stringify({ 'kasugai.handleSshRemote': true }));
         try {
             const vscodeExecutablePath = await executableFor(target);
             await runTests({
@@ -98,7 +102,7 @@ for (const target of targets) {
                     '--disable-workspace-trust',
                     '--skip-welcome',
                     '--skip-release-notes',
-                    '--user-data-dir', mkdtempSync(join(tmpdir(), 'kasugai-ud-')),
+                    '--user-data-dir', userDataDir,
                 ],
             });
             console.log(`PASS ${label}`);

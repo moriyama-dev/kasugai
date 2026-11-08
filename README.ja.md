@@ -74,13 +74,17 @@ $u = (Invoke-RestMethod https://api.github.com/repos/moriyama-dev/kasugai/releas
 ## 使い方
 
 - **Kasugai: Connect to Host...**（左下のリモートボタンからも選べます）で、リモートのウィンドウを開きます。ホストの一覧は `~/.ssh/config` から読み込みます。
-- **リモート エクスプローラー**の「SSH Targets (Kasugai)」に、ホストと最近開いたフォルダーが並びます。
+- 左端の列（アクティビティバー）の **Kasugai のアイコン**を押すと、ホストと最近開いたフォルダーの一覧（SSH Targets）と、フィードバックの入力欄が開きます。
 - **Kasugai: Show Log**：接続のログを表示します。
 - **Kasugai: Kill Server on Host...**：固まったリモートのサーバーを起動し直します。
 - **Kasugai: Check for Updates...**：GitHub に新しい版がないか確認します。
-- **Kasugai: Report an Issue** / **Kasugai: Open on GitHub**：問題の報告と GitHub のページです（「SSH Targets」ビューのメニューにもあります）。
+- **Kasugai: Send Feedback...**：フィードバックの入力欄を開きます。**Kasugai: Report an Issue** / **Kasugai: Open on GitHub** は GitHub を直接開きます。
 
 Kasugai は独自のリモートの種類（`kasugai-ssh`）を使います。ほかの SSH リモート拡張機能と一緒に入れても、ぶつかりません。
+
+### ほかの拡張機能（Tailscale など）から開く場合
+
+Tailscale の拡張機能などは、SSH のウィンドウを `ssh-remote` という種類で開きます。これはほかの SSH リモート拡張機能の種類です。こうしたウィンドウも Kasugai で開くには、`"kasugai.handleSshRemote": true` にして、ほかの SSH リモート拡張機能（open-remote-ssh、Remote - SSH）を無効にします。`ssh-remote` を受け持てる拡張機能は 1 つだけだからです。設定は、変えたあとに開くウィンドウから効きます。
 
 ## 設定
 
@@ -91,6 +95,7 @@ Kasugai は独自のリモートの種類（`kasugai-ssh`）を使います。�
 | `kasugai.keepAliveInterval` | `15` | 定期通信の間隔（秒）。`0` で送りません。 |
 | `kasugai.keepAliveCountMax` | `3` | 何回応答がなければ切断とみなして再接続するか。 |
 | `kasugai.reconnectTimeout` | `3600` | 再接続を試し続ける時間（秒）。`0` で自動再接続をしません。 |
+| `kasugai.handleSshRemote` | `false` | `ssh-remote+<ホスト>` のウィンドウ（Tailscale の拡張機能から開いたものなど）も Kasugai で開く。先にほかの SSH リモート拡張機能を無効にしてください。 |
 | `kasugai.localServerDownload` | `auto` | `auto`：まずサーバー側でダウンロードし、だめなら手元から送る。`always`：いつも手元から送る。`off`：サーバー側だけ。 |
 
 **ほかの SSH リモート拡張機能から乗り換える場合**：`remote.SSH.<名前>` に設定済みの値は、対応する `kasugai.<名前>` を設定していなければ、そのまま使います。
@@ -108,7 +113,9 @@ Kasugai は、オープンソースの VSCodium のリモートサーバーを�
 
 ## 問題の報告
 
-不具合や要望は **Kasugai: Report an Issue** か [GitHub の Issues](https://github.com/moriyama-dev/kasugai/issues) からお知らせください。ログを貼るときは、ホスト名やユーザー名を消してください。
+困ったことや要望は、左端の列の **Kasugai のアイコン**を押して、フィードバックの入力欄からお知らせください。種類（不具合・機能の要望・意見）を選んで内容を書き、**GitHub で開く** を押すと、書いた内容と、エディター・OS の版、最近の Kasugai のログ（チェックを外せば付けません）を入れた Issue の画面がブラウザで開きます。ログのホスト名・ユーザー名・IP アドレス・ホームフォルダー・ホスト鍵の指紋・接続用のトークンは先に伏せます。**付けるログを見る** で、付く中身をそのまま確かめられます。GitHub で **Submit new issue** を押すまで、どこにも送られません。
+
+[GitHub の Issues](https://github.com/moriyama-dev/kasugai/issues) に直接書いてもかまいません。
 
 ## クレジットとライセンス
 

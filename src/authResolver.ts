@@ -33,8 +33,25 @@ export type HostVerificationPolicy = 'accept' | 'ask' | 'reject';
 
 export const REMOTE_SSH_AUTHORITY = 'kasugai-ssh';
 
+/**
+ * The remote authority of the other SSH remote extensions. Tools such as the
+ * Tailscale extension open their windows with it, so Kasugai can serve it too
+ * when `kasugai.handleSshRemote` is on.
+ */
+export const COMPAT_SSH_AUTHORITY = 'ssh-remote';
+
 export function getRemoteAuthority(host: string) {
     return `${REMOTE_SSH_AUTHORITY}+${host}`;
+}
+
+/** Whether Kasugai also resolves `ssh-remote+...` windows. */
+export function isSshRemoteHandled(): boolean {
+    return getSetting<boolean>('handleSshRemote', false) === true;
+}
+
+/** Whether `type` (the part of an authority before `+`) is resolved by Kasugai. */
+export function isKasugaiAuthorityType(type: string | undefined): boolean {
+    return type === REMOTE_SSH_AUTHORITY || (type === COMPAT_SSH_AUTHORITY && isSshRemoteHandled());
 }
 
 /**
@@ -256,6 +273,8 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
     private readonly unlockedKeys = new Map<string, ParsedKey>();
     private statusItem: vscode.StatusBarItem | undefined;
     private statusHideTimer: NodeJS.Timeout | undefined;
+    /** The authority type this window was opened with (`kasugai-ssh` or `ssh-remote`). */
+    private authorityType: string = REMOTE_SSH_AUTHORITY;
 
     constructor(
         readonly context: vscode.ExtensionContext,
@@ -265,9 +284,10 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
 
     resolve(authority: string, context: vscode.RemoteAuthorityResolverContext): Thenable<vscode.ResolverResult> {
         const [type, dest] = authority.split('+');
-        if (type !== REMOTE_SSH_AUTHORITY) {
+        if (!isKasugaiAuthorityType(type)) {
             throw new Error(`Invalid authority type for SSH resolver: ${type}`);
         }
+        this.authorityType = type;
 
         this.logger.info(`Resolving ssh remote authority '${authority}' (attempt #${context.resolveAttempt})`);
 
@@ -629,7 +649,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         this.labelFormatterDisposable?.dispose();
         this.labelFormatterDisposable = vscode.workspace.registerResourceLabelFormatter({
             scheme: 'vscode-remote',
-            authority: `${REMOTE_SSH_AUTHORITY}+*`,
+            authority: `${this.authorityType}+*`,
             formatting: {
                 label: '${path}',
                 separator: '/',
@@ -716,7 +736,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
      * reconnection token" without logging in by hand.
      */
     async killServerOnHost() {
-        if (vscode.env.remoteName !== REMOTE_SSH_AUTHORITY || !this.sshConnection || !this.serverDataDir) {
+        if (!isKasugaiAuthorityType(vscode.env.remoteName) || !this.sshConnection || !this.serverDataDir) {
             void vscode.window.showInformationMessage('Kasugai: this command works in a window connected with Kasugai.');
             return;
         }

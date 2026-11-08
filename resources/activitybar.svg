@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c5c5c5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Kasugai: a staple across two timbers -->
+  <rect x="2.5" y="11" width="8.5" height="9" rx="1"/>
+  <rect x="13" y="11" width="8.5" height="9" rx="1"/>
+  <path d="M6.5 15 V7 H17.5 V15"/>
+</svg>

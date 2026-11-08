@@ -110,7 +110,9 @@
 		"onCommand:kasugai.openConfigFile",
 		"onCommand:kasugai.showLog",
 		"onResolveRemoteAuthority:kasugai-ssh",
-		"onView:kasugaiHosts"
+		"onResolveRemoteAuthority:ssh-remote",
+		"onView:kasugaiHosts",
+		"onView:kasugaiFeedback"
 	],
 	"contributes": {
 		"configuration": {
@@ -277,6 +279,12 @@
 						"The remote server and client's commits must match."
 					]
 				},
+				"kasugai.handleSshRemote": {
+					"type": "boolean",
+					"default": false,
+					"scope": "application",
+					"markdownDescription": "Also open `ssh-remote+<host>` windows with Kasugai. Other tools, such as the Tailscale extension, open SSH windows with this remote type, which normally belongs to other SSH remote extensions (open-remote-ssh, Remote - SSH). Turn this on only when none of them is enabled. Applies to windows opened after the change."
+				},
 				"kasugai.updateCheck": {
 					"type": "string",
 					"enum": [
@@ -293,13 +301,27 @@
 				}
 			}
 		},
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "kasugai",
+					"title": "Kasugai",
+					"icon": "resources/activitybar.svg"
+				}
+			]
+		},
 		"views": {
-			"remote": [
+			"kasugai": [
 				{
 					"id": "kasugaiHosts",
-					"name": "SSH Targets (Kasugai)",
-					"group": "targets@1",
-					"remoteName": "kasugai-ssh"
+					"name": "SSH Targets",
+					"icon": "resources/activitybar.svg"
+				},
+				{
+					"type": "webview",
+					"id": "kasugaiFeedback",
+					"name": "Feedback",
+					"icon": "resources/activitybar.svg"
 				}
 			]
 		},
@@ -382,6 +404,12 @@
 				"icon": "$(github)"
 			},
 			{
+				"command": "kasugai.sendFeedback",
+				"title": "Send Feedback...",
+				"category": "Kasugai",
+				"icon": "$(feedback)"
+			},
+			{
 				"command": "kasugai.checkForUpdates",
 				"title": "Check for Updates...",
 				"category": "Kasugai"
@@ -403,27 +431,27 @@
 			"statusBar/remoteIndicator": [
 				{
 					"command": "kasugai.openEmptyWindow",
-					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
+					"when": "remoteName == kasugai-ssh && remoteConnectionState == connected || remoteName == ssh-remote && config.kasugai.handleSshRemote && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@1"
 				},
 				{
 					"command": "kasugai.openEmptyWindowInCurrentWindow",
-					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
+					"when": "remoteName == kasugai-ssh && remoteConnectionState == connected || remoteName == ssh-remote && config.kasugai.handleSshRemote && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@2"
 				},
 				{
 					"command": "kasugai.openConfigFile",
-					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
+					"when": "remoteName == kasugai-ssh && remoteConnectionState == connected || remoteName == ssh-remote && config.kasugai.handleSshRemote && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@3"
 				},
 				{
 					"command": "kasugai.showLog",
-					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
+					"when": "remoteName == kasugai-ssh && remoteConnectionState == connected || remoteName == ssh-remote && config.kasugai.handleSshRemote && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@4"
 				},
 				{
 					"command": "kasugai.killServer",
-					"when": "remoteName =~ /^kasugai-ssh$/ && remoteConnectionState == connected",
+					"when": "remoteName == kasugai-ssh && remoteConnectionState == connected || remoteName == ssh-remote && config.kasugai.handleSshRemote && remoteConnectionState == connected",
 					"group": "remote_20_ssh_1general@5"
 				},
 				{
@@ -492,7 +520,7 @@
 				},
 				{
 					"command": "kasugai.killServer",
-					"when": "remoteName =~ /^kasugai-ssh$/"
+					"when": "remoteName == kasugai-ssh || remoteName == ssh-remote && config.kasugai.handleSshRemote"
 				}
 			],
 			"view/title": [
@@ -525,6 +553,16 @@
 					"command": "kasugai.checkForUpdates",
 					"when": "view == kasugaiHosts",
 					"group": "kasugai@3"
+				},
+				{
+					"command": "kasugai.showLog",
+					"when": "view == kasugaiFeedback",
+					"group": "kasugai@1"
+				},
+				{
+					"command": "kasugai.openRepository",
+					"when": "view == kasugaiFeedback",
+					"group": "kasugai@2"
 				}
 			],
 			"view/item/context": [

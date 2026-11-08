@@ -20,6 +20,15 @@ exports.run = async function run() {
 
     assert.ok(commands.includes('kasugai.checkForUpdates'), 'command kasugai.checkForUpdates is registered');
 
+    // kasugai.handleSshRemote is on in the test profile
+    assert.strictEqual(api && api.sshRemoteRegistered, expectResolver,
+        expectResolver ? 'the ssh-remote resolver is registered' : 'no ssh-remote resolver without the proposed API');
+
+    // The Activity Bar panel: the feedback form opens without errors
+    assert.ok(commands.includes('kasugai.sendFeedback'), 'command kasugai.sendFeedback is registered');
+    await vscode.commands.executeCommand('kasugai.sendFeedback');
+    await vscode.commands.executeCommand('kasugaiHosts.focus');
+
     // The updater installs a downloaded .vsix through this editor command
     if (process.env.KASUGAI_TEST_VSIX) {
         await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(process.env.KASUGAI_TEST_VSIX));
@@ -29,5 +38,5 @@ exports.run = async function run() {
         console.log(`[kasugai startup] installed from .vsix: ${installed.join(', ')}`);
     }
 
-    console.log(`[kasugai startup] ${vscode.env.appName} ${vscode.version}: activated, resolverRegistered=${api.resolverRegistered}`);
+    console.log(`[kasugai startup] ${vscode.env.appName} ${vscode.version}: activated, resolverRegistered=${api.resolverRegistered}, sshRemoteRegistered=${api.sshRemoteRegistered}`);
 };
