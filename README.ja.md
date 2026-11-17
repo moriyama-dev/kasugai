@@ -32,12 +32,12 @@
 
 | エディター | 方法 |
 |---|---|
-| **VSCodium** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`codium --install-extension kasugai-ssh-<版>.vsix` を実行します。（Open VSX への公開は準備中です） |
+| **VSCodium** | 拡張機能ビューで **Kasugai** を検索して **Install** を押すか、`codium --install-extension moriyama-dev.kasugai-ssh` を実行します。[Open VSX](https://open-vsx.org/extension/moriyama-dev/kasugai-ssh) から入り、更新は VSCodium が行います。 |
 | **VS Code** | [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) から `kasugai-ssh-<版>.vsix` をダウンロードし、`code --install-extension kasugai-ssh-<版>.vsix` を実行します。（下で説明する特別な API を使う拡張機能は、VS Code Marketplace には載せられないためです） |
 
 Windows・macOS・Linux（Ubuntu を含む）のどれでも、同じように使えます。SSH の接続には OS に入っている `ssh` コマンドを使います。macOS と Windows 10/11 には最初から入っています。Ubuntu では `openssh-client` パッケージに入っています（`ssh` が無いときは `sudo apt install openssh-client`）。
 
-**一番簡単な方法（どの OS でも同じ）**：[最新のリリース](https://github.com/moriyama-dev/kasugai/releases/latest)から `kasugai-ssh-<版>.vsix` をダウンロードします。エディターで拡張機能ビューを開き（<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>、macOS は <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>）、上の「…」メニューから **Install from VSIX...**（VSIX からのインストール）を選んで、ダウンロードしたファイルを指定します。そのあと下の「[最初に一度だけ必要な設定](#最初に一度だけ必要な設定)」をします。以後の更新は Kasugai が自分で知らせます（「[更新](#更新)」）。
+**.vsix から入れる方法（VS Code、または Open VSX を使わない VSCodium。どの OS でも同じ）**：[最新のリリース](https://github.com/moriyama-dev/kasugai/releases/latest)から `kasugai-ssh-<版>.vsix` をダウンロードします。エディターで拡張機能ビューを開き（<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>、macOS は <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>）、上の「…」メニューから **Install from VSIX...**（VSIX からのインストール）を選んで、ダウンロードしたファイルを指定します。そのあと下の「[最初に一度だけ必要な設定](#最初に一度だけ必要な設定)」をします。以後の更新は Kasugai が自分で知らせます（「[更新](#更新)」）。
 
 **コマンド1行で入れる方法**：VSCodium は `codium`、VS Code は `code` を使います。
 
@@ -57,7 +57,9 @@ $u = (Invoke-RestMethod https://api.github.com/repos/moriyama-dev/kasugai/releas
 
 ### 更新
 
-エディターが自動で更新するのは、ストアから入れた拡張機能だけです。そこで Kasugai は、自分で更新を確認します。1日に1回 [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) を確認し、新しい版があれば通知します。「Update」を押すと、.vsix をダウンロードし、リリースに付いている `SHA256SUMS` と照らし合わせて壊れていないことを確かめてから、インストールします。そのあとウィンドウを再読み込みしてください。**Kasugai: Check for Updates...** で手動でも確認できます。確認を止めるには `"kasugai.updateCheck": "off"` にします。
+Open VSX から入れた場合は、ほかの拡張機能と同じく VSCodium が更新します。
+
+.vsix から入れた場合、エディターは更新してくれません。そこで Kasugai が自分で更新を確認します。1日に1回 [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) を確認し、新しい版があれば通知します。「Update」を押すと、.vsix をダウンロードし、リリースに付いている `SHA256SUMS` と照らし合わせて壊れていないことを確かめてから、インストールします。そのあとウィンドウを再読み込みしてください。**Kasugai: Check for Updates...** で手動でも確認できます。確認を止めるには `"kasugai.updateCheck": "off"` にします。
 
 ### 最初に一度だけ必要な設定
 
