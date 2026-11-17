@@ -635,7 +635,7 @@
 			"content-type": "2.1.0"
 		},
 		"get-uri": {
-			"basic-ftp": "6.2.3"
+			"basic-ftp": "6.2.6"
 		},
 		"magicast": {
 			"source-map-js": "1.2.2"
