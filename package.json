@@ -2,7 +2,7 @@
 	"name": "kasugai-ssh",
 	"displayName": "Kasugai — Remote SSH",
 	"description": "Stable and fast SSH remote development for VSCodium and VS Code. Keeps your session alive through network drops and reconnects automatically.",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"author": {
 		"name": "moriyama-dev",
 		"url": "https://github.com/moriyama-dev"
