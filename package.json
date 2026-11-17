@@ -294,10 +294,10 @@
 					"default": "notify",
 					"scope": "application",
 					"enumDescriptions": [
-						"Check GitHub Releases once a day and offer new versions.",
+						"Check GitHub Releases once a day and offer new versions (GitHub Releases installs only).",
 						"Never check for updates."
 					],
-					"markdownDescription": "Kasugai is installed from GitHub Releases, which editors do not update by themselves. With `notify`, Kasugai checks for a new release once a day and installs it when you choose **Update**, after verifying its SHA-256 checksum."
+					"markdownDescription": "For copies installed from GitHub Releases, which editors do not update by themselves. With `notify`, Kasugai checks for a new release once a day and installs it when you choose **Update**, after verifying its SHA-256 checksum. Copies installed from Open VSX are updated by the editor and never check GitHub."
 				}
 			}
 		},

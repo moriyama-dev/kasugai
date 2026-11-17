@@ -8,10 +8,14 @@ import { getSetting } from './common/config';
 import { REPOSITORY_URL } from './feedback';
 
 /*
- * Kasugai is installed from GitHub Releases (a .vsix), which editors never
- * update on their own. This checks the repository's latest release once a day,
+ * A copy installed from GitHub Releases (a .vsix) is never updated by the
+ * editor. For those, this checks the repository's latest release once a day,
  * offers the update, verifies the download against the release's SHA256SUMS
  * and installs it.
+ *
+ * A copy installed from the editor's extension store (Open VSX) is updated by
+ * the editor, so it is left alone: installing a .vsix over it would turn it
+ * into a pinned .vsix install and stop those store updates.
  */
 
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -71,6 +75,35 @@ export async function fetchLatestRelease(fetchImpl: typeof fetch = fetch): Promi
     return tag ? releaseFor(decodeURIComponent(tag)) : undefined;
 }
 
+/** How the editor recorded this installation: `gallery` (its store), `vsix`, or unknown. */
+export type InstallSource = 'gallery' | 'vsix' | undefined;
+
+/**
+ * Read the install source from the `extensions.json` that the editor keeps
+ * next to the installed extensions. Development copies and unknown layouts
+ * give `undefined`.
+ */
+export async function readInstallSource(extensionPath: string): Promise<InstallSource> {
+    let entries: unknown;
+    try {
+        entries = JSON.parse(await fs.promises.readFile(path.join(path.dirname(extensionPath), 'extensions.json'), 'utf8'));
+    } catch {
+        return undefined;
+    }
+    if (!Array.isArray(entries)) {
+        return undefined;
+    }
+    const folder = path.basename(extensionPath);
+    for (const entry of entries) {
+        const location = entry?.relativeLocation ?? (typeof entry?.location?.fsPath === 'string' ? path.basename(entry.location.fsPath) : undefined);
+        if (location === folder) {
+            const source = entry?.metadata?.source;
+            return source === 'gallery' || source === 'vsix' ? source : undefined;
+        }
+    }
+    return undefined;
+}
+
 export class Updater implements vscode.Disposable {
     private running: Promise<void> | undefined;
 
@@ -84,7 +117,7 @@ export class Updater implements vscode.Disposable {
         return String(this.context.extension?.packageJSON?.version ?? '0.0.0');
     }
 
-    /** Called on activation: at most one check per day, never in development. */
+    /** Called on activation: at most one check per day, never in development or for store installs. */
     checkInBackground() {
         if (this.context.extensionMode !== vscode.ExtensionMode.Production || getSetting<UpdateCheck>('updateCheck', 'notify') === 'off') {
             return;
@@ -107,6 +140,14 @@ export class Updater implements vscode.Disposable {
     }
 
     private async doCheck(interactive: boolean) {
+        if (await readInstallSource(this.context.extensionPath) === 'gallery') {
+            this.logger.info(`Kasugai ${this.currentVersion} was installed from the extension store; the editor keeps it up to date`);
+            if (interactive) {
+                void vscode.window.showInformationMessage(`Kasugai ${this.currentVersion} was installed from the extension store, which keeps it up to date. Check the Extensions view for new versions.`);
+            }
+            return;
+        }
+
         let latest: ReleaseInfo | undefined;
         try {
             latest = await fetchLatestRelease();

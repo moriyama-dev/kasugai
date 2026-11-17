@@ -1,5 +1,14 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { describe, expect, it } from 'vitest';
-import { checksumFor, fetchLatestRelease, releaseFor, versionFromTag } from '../src/updater';
+import { checksumFor, fetchLatestRelease, readInstallSource, releaseFor, versionFromTag } from '../src/updater';
+
+function extensionsDir(entries: unknown): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kasugai-updater-'));
+    fs.writeFileSync(path.join(dir, 'extensions.json'), typeof entries === 'string' ? entries : JSON.stringify(entries));
+    return dir;
+}
 
 describe('updater', () => {
     it('reads versions from release tags', () => {
@@ -46,4 +55,27 @@ describe('updater', () => {
         const latest = await fetchLatestRelease();
         expect(latest?.version).toMatch(/^\d+\.\d+\.\d+/);
     }, 30_000);
+
+    it('reads the install source the editor recorded', async () => {
+        const dir = extensionsDir([
+            { identifier: { id: 'other.ext' }, relativeLocation: 'other.ext-1.0.0', metadata: { source: 'vsix' } },
+            { identifier: { id: 'moriyama-dev.kasugai-ssh' }, relativeLocation: 'moriyama-dev.kasugai-ssh-0.3.0', metadata: { source: 'gallery' } },
+        ]);
+        expect(await readInstallSource(path.join(dir, 'moriyama-dev.kasugai-ssh-0.3.0'))).toBe('gallery');
+    });
+
+    it('reads the install source of a .vsix install from its location', async () => {
+        const dir = extensionsDir([
+            { identifier: { id: 'moriyama-dev.kasugai-ssh' }, location: { fsPath: '/x/moriyama-dev.kasugai-ssh-0.2.0' }, metadata: { source: 'vsix', pinned: true } },
+        ]);
+        expect(await readInstallSource(path.join(dir, 'moriyama-dev.kasugai-ssh-0.2.0'))).toBe('vsix');
+    });
+
+    it('gives no install source for development copies and unreadable lists', async () => {
+        expect(await readInstallSource(path.join(os.tmpdir(), 'kasugai-no-such-dir', 'kasugai'))).toBeUndefined();
+        expect(await readInstallSource(path.join(extensionsDir('not json'), 'moriyama-dev.kasugai-ssh-0.3.0'))).toBeUndefined();
+        expect(await readInstallSource(path.join(extensionsDir({}), 'moriyama-dev.kasugai-ssh-0.3.0'))).toBeUndefined();
+        const dir = extensionsDir([{ relativeLocation: 'moriyama-dev.kasugai-ssh-0.3.0', metadata: { source: 'resource' } }]);
+        expect(await readInstallSource(path.join(dir, 'moriyama-dev.kasugai-ssh-0.3.0'))).toBeUndefined();
+    });
 });
