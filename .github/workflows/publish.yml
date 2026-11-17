@@ -1,0 +1,87 @@
+name: Publish
+
+# A version tag (v0.3.0, ...) runs every test, then publishes that version to
+# Open VSX and attaches the .vsix and SHA256SUMS to a GitHub release (the
+# in-editor updater of .vsix installs reads both). Running the workflow by
+# hand does everything except publishing, so the pipeline can be checked
+# without releasing.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    uses: $/.github/workflows/macos-startup.yml
+
+  publish:
+    needs: macos
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      # Creates the GitHub release.
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Check that the tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${version}"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build SSH server images
+        run: npm run test:images
+
+      - name: Test
+        run: npm test
+
+      - name: Start-up test (VSCodium and VS Code)
+        run: xvfb-run -a npm run test:startup
+
+      - name: Package
+        run: npm run package:release
+
+      - name: Publish to Open VSX
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: npx --yes ovsx@1.3.0 publish --packagePath "dist/kasugai-ssh-${GITHUB_REF_NAME#v}.vsix"
+
+      - name: Create the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The release notes are this version's section of CHANGELOG.md.
+          awk -v tag="$GITHUB_REF_NAME" '
+            index($0, "[" tag "]") == 1 { found = 1; getline; next }
+            found && /^\[v[0-9]/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          gh release create "$GITHUB_REF_NAME" dist/*.vsix dist/SHA256SUMS --title "$GITHUB_REF_NAME" --notes-file release-notes.md

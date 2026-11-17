@@ -1,11 +1,10 @@
 name: macOS start-up test
 
-# Must pass before every release. Runs on GitHub's standard macOS runner only,
-# uses no secrets, reads the repository only, and never runs for pull requests.
+# Must pass before every release: the Publish workflow calls it for each
+# version tag. Runs on GitHub's standard macOS runner only, uses no secrets,
+# reads the repository only, and never runs for pull requests.
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_call:
   workflow_dispatch:
 
 permissions:
