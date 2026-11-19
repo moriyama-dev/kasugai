@@ -3,8 +3,8 @@ Changelog
 
 All notable changes to this project will be documented in this file.
 
-Unreleased
-----------
+[v0.3.1](https://github.com/moriyama-dev/kasugai/releases/tag/v0.3.1) | 2026-11-19
+----------------------------------------------------------------------------------
 
 ### Added
 
