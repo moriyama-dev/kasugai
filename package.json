@@ -1,7 +1,7 @@
 {
 	"name": "kasugai-ssh",
 	"displayName": "Kasugai — Remote SSH",
-	"description": "Stable and fast SSH remote development for VSCodium and VS Code. Keeps your session alive through network drops and reconnects automatically.",
+	"description": "%description%",
 	"version": "0.3.0",
 	"author": {
 		"name": "moriyama-dev",
@@ -120,13 +120,13 @@
 			"properties": {
 				"kasugai.configFile": {
 					"type": "string",
-					"description": "The absolute file path to a custom SSH config file.",
+					"description": "%config.configFile%",
 					"default": "",
 					"scope": "application"
 				},
 				"kasugai.connectTimeout": {
 					"type": "number",
-					"description": "Timeout in seconds for establishing the SSH session (TCP connect, handshake and authentication).",
+					"description": "%config.connectTimeout%",
 					"default": 60,
 					"scope": "application",
 					"minimum": 1
@@ -136,21 +136,21 @@
 					"default": 15,
 					"minimum": 0,
 					"scope": "application",
-					"markdownDescription": "Seconds between SSH keepalive messages, used to notice a dead link quickly. `0` disables keepalives. A host's `ServerAliveInterval` in your SSH config takes precedence."
+					"markdownDescription": "%config.keepAliveInterval%"
 				},
 				"kasugai.keepAliveCountMax": {
 					"type": "number",
 					"default": 3,
 					"minimum": 1,
 					"scope": "application",
-					"markdownDescription": "Unanswered keepalives before the connection is considered lost and Kasugai starts reconnecting. A host's `ServerAliveCountMax` in your SSH config takes precedence."
+					"markdownDescription": "%config.keepAliveCountMax%"
 				},
 				"kasugai.reconnectTimeout": {
 					"type": "number",
 					"default": 3600,
 					"minimum": 0,
 					"scope": "application",
-					"markdownDescription": "How long, in seconds, Kasugai keeps trying to re-establish a dropped SSH connection in the background. `0` disables automatic reconnection. The remote server keeps your session for up to 3 hours."
+					"markdownDescription": "%config.reconnectTimeout%"
 				},
 				"kasugai.verifyUnknownHosts": {
 					"type": "string",
@@ -160,11 +160,11 @@
 						"reject"
 					],
 					"enumDescriptions": [
-						"Add the key to known_hosts and connect, like OpenSSH's `accept-new`.",
-						"Show the key fingerprint and ask before connecting.",
-						"Refuse to connect."
+						"%config.verifyUnknownHosts.accept%",
+						"%config.verifyUnknownHosts.ask%",
+						"%config.verifyUnknownHosts.reject%"
 					],
-					"description": "What to do when a host is not present in known_hosts.",
+					"description": "%config.verifyUnknownHosts%",
 					"default": "ask",
 					"scope": "application"
 				},
@@ -176,11 +176,11 @@
 						"reject"
 					],
 					"enumDescriptions": [
-						"Connect without asking. The recorded key is left untouched.",
-						"Show both fingerprints and ask before connecting.",
-						"Refuse to connect, like OpenSSH's `strict`."
+						"%config.verifyKnownHosts.accept%",
+						"%config.verifyKnownHosts.ask%",
+						"%config.verifyKnownHosts.reject%"
 					],
-					"description": "What to do when a host presents a different key than the one recorded in known_hosts. A changed host key can mean the server was reinstalled — or that the connection is being intercepted.",
+					"description": "%config.verifyKnownHosts%",
 					"default": "reject",
 					"scope": "application"
 				},
@@ -189,24 +189,24 @@
 					"items": {
 						"type": "string"
 					},
-					"description": "List of extensions that should be installed automatically on all SSH hosts.",
+					"description": "%config.defaultExtensions%",
 					"scope": "application"
 				},
 				"kasugai.enableDynamicForwarding": {
 					"type": "boolean",
-					"description": "Only used when connecting through the local ssh client (GSSAPI hosts): open one SOCKS forward (-D) and route tunnels through it instead of starting an ssh process per tunnel. Connections made by Kasugai's built-in SSH client always forward directly.",
+					"description": "%config.enableDynamicForwarding%",
 					"scope": "application",
 					"default": true
 				},
 				"kasugai.enableAgentForwarding": {
 					"type": "boolean",
-					"markdownDescription": "Enable fixing the remote environment so that the SSH config option `ForwardAgent` will take effect as expected from VS Code's remote extension host.",
+					"markdownDescription": "%config.enableAgentForwarding%",
 					"scope": "application",
 					"default": true
 				},
 				"kasugai.serverDownloadUrlTemplate": {
 					"type": "string",
-					"description": "The URL from where the vscode server will be downloaded. You can use the following variables and they will be replaced dynamically:\n- ${quality}: vscode server quality, e.g. stable or insiders\n- ${version}: vscode server version, e.g. 1.69.0\n- ${commit}: vscode server release commit\n- ${arch}: vscode server arch, e.g. x64, armhf, arm64\n- ${release}: release number, vscodium only https://github.com/VSCodium/vscodium/pull/1192",
+					"description": "%config.serverDownloadUrlTemplate%",
 					"scope": "application"
 				},
 				"kasugai.localServerDownload": {
@@ -219,15 +219,15 @@
 					"default": "auto",
 					"scope": "application",
 					"enumDescriptions": [
-						"Download on the remote host; if that fails, download on this machine and upload it over SSH.",
-						"Always download on this machine and upload it over SSH (for hosts without internet access).",
-						"Only download on the remote host."
+						"%config.localServerDownload.auto%",
+						"%config.localServerDownload.always%",
+						"%config.localServerDownload.off%"
 					],
-					"markdownDescription": "Where the server is downloaded when a host does not have it yet. Uploading works for Linux, macOS and FreeBSD hosts."
+					"markdownDescription": "%config.localServerDownload%"
 				},
 				"kasugai.remotePlatform": {
 					"type": "object",
-					"description": "A map of the remote hostname to the platform for that remote. Valid values: linux, macos, windows.",
+					"description": "%config.remotePlatform%",
 					"scope": "application",
 					"default": {},
 					"additionalProperties": {
@@ -241,12 +241,12 @@
 				},
 				"kasugai.remoteServerListenOnSocket": {
 					"type": "boolean",
-					"description": "When true, the remote vscode server will listen on a socket path instead of opening a port. Only valid for Linux and macOS remotes. Requires `AllowStreamLocalForwarding` to be enabled for the SSH server.",
+					"description": "%config.remoteServerListenOnSocket%",
 					"default": false
 				},
 				"kasugai.serverInstallPath": {
 					"type": "object",
-					"description": "Specifies custom installation directories for the VS Code server on remote hosts. Maps each remote hostname (or pattern) to an absolute path where the server should be installed. Supports wildcards: use `*` for catch-all, or `*.domain.com` for domain-specific paths. More specific patterns take precedence over general ones. When not specified, the server installs in the default home directory. **Note**: Changing this setting may require manual cleanup of existing server installations in previous locations.",
+					"description": "%config.serverInstallPath%",
 					"scope": "application",
 					"default": {},
 					"additionalProperties": {
@@ -255,18 +255,18 @@
 				},
 				"kasugai.serverBinaryName": {
 					"type": "string",
-					"description": "The name of the server binary, use this **only if** you are using a client without a corresponding server release",
+					"description": "%config.serverBinaryName%",
 					"scope": "application",
 					"default": ""
 				},
 				"kasugai.serverVersion": {
 					"type": "string",
-					"description": "Version of the VSCodium remote server to install: 'match', 'latest', 'closest' or a specific version (e.g. '1.117.0'). Default: 'match' in VSCodium, 'closest' in other editors such as VS Code.",
+					"description": "%config.serverVersion%",
 					"scope": "application"
 				},
 				"kasugai.serverValidation": {
 					"type": "string",
-					"description": "How strictly the remote server must match this editor: 'strict' requires the same commit, 'force' rewrites the remote commit to match, 'skip' disables the check. Default: 'strict' in VSCodium, 'force' in other editors such as VS Code.",
+					"description": "%config.serverValidation%",
 					"scope": "application",
 					"enum": [
 						"force",
@@ -274,16 +274,16 @@
 						"strict"
 					],
 					"enumDescriptions": [
-						"Modify the commit of the remote server.",
-						"The remote server won't validate the client.",
-						"The remote server and client's commits must match."
+						"%config.serverValidation.force%",
+						"%config.serverValidation.skip%",
+						"%config.serverValidation.strict%"
 					]
 				},
 				"kasugai.handleSshRemote": {
 					"type": "boolean",
 					"default": false,
 					"scope": "application",
-					"markdownDescription": "Also open `ssh-remote+<host>` windows with Kasugai. Other tools, such as the Tailscale extension, open SSH windows with this remote type, which normally belongs to other SSH remote extensions (open-remote-ssh, Remote - SSH). Turn this on only when none of them is enabled. Applies to windows opened after the change."
+					"markdownDescription": "%config.handleSshRemote%"
 				},
 				"kasugai.updateCheck": {
 					"type": "string",
@@ -294,10 +294,10 @@
 					"default": "notify",
 					"scope": "application",
 					"enumDescriptions": [
-						"Check GitHub Releases once a day and offer new versions (GitHub Releases installs only).",
-						"Never check for updates."
+						"%config.updateCheck.notify%",
+						"%config.updateCheck.off%"
 					],
-					"markdownDescription": "For copies installed from GitHub Releases, which editors do not update by themselves. With `notify`, Kasugai checks for a new release once a day and installs it when you choose **Update**, after verifying its SHA-256 checksum. Copies installed from Open VSX are updated by the editor and never check GitHub."
+					"markdownDescription": "%config.updateCheck%"
 				}
 			}
 		},
@@ -314,13 +314,13 @@
 			"kasugai": [
 				{
 					"id": "kasugaiHosts",
-					"name": "SSH Targets",
+					"name": "%view.hosts.name%",
 					"icon": "resources/activitybar.svg"
 				},
 				{
 					"type": "webview",
 					"id": "kasugaiFeedback",
-					"name": "Feedback",
+					"name": "%view.feedback.name%",
 					"icon": "resources/activitybar.svg"
 				}
 			]
@@ -328,90 +328,90 @@
 		"commands": [
 			{
 				"command": "kasugai.openEmptyWindow",
-				"title": "Connect to Host...",
+				"title": "%command.openEmptyWindow.title%",
 				"category": "Kasugai"
 			},
 			{
 				"command": "kasugai.openEmptyWindowInCurrentWindow",
-				"title": "Connect Current Window to Host...",
+				"title": "%command.openEmptyWindowInCurrentWindow.title%",
 				"category": "Kasugai"
 			},
 			{
 				"command": "kasugai.openConfigFile",
-				"title": "Open SSH Configuration File...",
+				"title": "%command.openConfigFile.title%",
 				"category": "Kasugai"
 			},
 			{
 				"command": "kasugai.showLog",
-				"title": "Show Log",
+				"title": "%command.showLog.title%",
 				"category": "Kasugai"
 			},
 			{
 				"command": "kasugai.explorer.emptyWindowInNewWindow",
-				"title": "Connect to Host in New Window",
+				"title": "%command.explorer.emptyWindowInNewWindow.title%",
 				"icon": "$(empty-window)"
 			},
 			{
 				"command": "kasugai.explorer.emptyWindowInCurrentWindow",
-				"title": "Connect to Host in Current Window",
+				"title": "%command.explorer.emptyWindowInCurrentWindow.title%",
 				"icon": "$(arrow-right)"
 			},
 			{
 				"command": "kasugai.explorer.reopenFolderInCurrentWindow",
-				"title": "Open on SSH Host in Current Window",
+				"title": "%command.explorer.reopenFolderInCurrentWindow.title%",
 				"icon": "$(arrow-right)"
 			},
 			{
 				"command": "kasugai.explorer.reopenFolderInNewWindow",
-				"title": "Open on SSH Host in New Window",
+				"title": "%command.explorer.reopenFolderInNewWindow.title%",
 				"icon": "$(folder-opened)"
 			},
 			{
 				"command": "kasugai.explorer.deleteFolderHistoryItem",
-				"title": "Remove From Recent List",
+				"title": "%command.explorer.deleteFolderHistoryItem.title%",
 				"icon": "$(x)"
 			},
 			{
 				"command": "kasugai.explorer.refresh",
-				"title": "Refresh",
+				"title": "%command.explorer.refresh.title%",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "kasugai.explorer.configure",
-				"title": "Configure",
+				"title": "%command.explorer.configure.title%",
 				"icon": "$(gear)"
 			},
 			{
 				"command": "kasugai.explorer.add",
-				"title": "Add New",
+				"title": "%command.explorer.add.title%",
 				"icon": "$(plus)"
 			},
 			{
 				"command": "kasugai.killServer",
-				"title": "Kill Server on Host...",
+				"title": "%command.killServer.title%",
 				"category": "Kasugai"
 			},
 			{
 				"command": "kasugai.reportIssue",
-				"title": "Report an Issue",
+				"title": "%command.reportIssue.title%",
 				"category": "Kasugai",
 				"icon": "$(report)"
 			},
 			{
 				"command": "kasugai.openRepository",
-				"title": "Open on GitHub",
+				"title": "%command.openRepository.title%",
 				"category": "Kasugai",
 				"icon": "$(github)"
 			},
 			{
 				"command": "kasugai.sendFeedback",
-				"title": "Send Feedback...",
+				"title": "%command.sendFeedback.title%",
 				"category": "Kasugai",
 				"icon": "$(feedback)"
 			},
 			{
 				"command": "kasugai.checkForUpdates",
-				"title": "Check for Updates...",
+				"title": "%command.checkForUpdates.title%",
 				"category": "Kasugai"
 			}
 		],
@@ -664,5 +664,6 @@
 	],
 	"extensionKind": [
 		"ui"
-	]
+	],
+	"l10n": "./l10n"
 }

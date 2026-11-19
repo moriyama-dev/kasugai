@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import { applyEdits, modify, parse } from 'jsonc-parser';
 import { getProductJson } from './server-config/get-product-json';
 import type { Log } from './common/logger';
+import { t } from './common/l10n';
 
 const ARGV_KEY = 'enable-proposed-api';
 
@@ -14,10 +15,10 @@ const ARGV_KEY = 'enable-proposed-api';
  * Kasugai offers to add itself there the first time it is missing.
  */
 export async function offerProposedApiSetup(extensionId: string, logger: Log) {
-    const enable = 'Enable Kasugai';
-    const howTo = 'Show Me How';
+    const enable = t('Enable Kasugai');
+    const howTo = t('Show Me How');
     const answer = await vscode.window.showWarningMessage(
-        'Kasugai needs a one-time permission to open SSH remote windows. Add it to this editor\'s runtime arguments (argv.json)? A restart of the editor is needed afterwards.',
+        t('Kasugai needs a one-time permission to open SSH remote windows. Add it to this editor\'s runtime arguments (argv.json)? A restart of the editor is needed afterwards.'),
         enable,
         howTo
     );
@@ -27,7 +28,7 @@ export async function offerProposedApiSetup(extensionId: string, logger: Log) {
             const file = await argvJsonPath();
             await addToArgvJson(file, extensionId);
             logger.info(`Added ${extensionId} to ${ARGV_KEY} in ${file}`);
-            void vscode.window.showInformationMessage(`Kasugai was added to ${file}. Quit and restart the editor to finish (reloading the window is not enough).`);
+            void vscode.window.showInformationMessage(t('Kasugai was added to {0}. Quit and restart the editor to finish (reloading the window is not enough).', file));
         } catch (e) {
             logger.error('Could not update argv.json', e);
             await showManualSetup(extensionId);
@@ -39,7 +40,7 @@ export async function offerProposedApiSetup(extensionId: string, logger: Log) {
 
 async function showManualSetup(extensionId: string) {
     await vscode.env.clipboard.writeText(`"${ARGV_KEY}": ["${extensionId}"]`);
-    void vscode.window.showInformationMessage(`Add "${ARGV_KEY}": ["${extensionId}"] to the file that opens now (copied to the clipboard), save it and restart the editor.`);
+    void vscode.window.showInformationMessage(t('Add {0} to the file that opens now (copied to the clipboard), save it and restart the editor.', `"${ARGV_KEY}": ["${extensionId}"]`));
     await vscode.commands.executeCommand('workbench.action.configureRuntimeArguments');
 }
 

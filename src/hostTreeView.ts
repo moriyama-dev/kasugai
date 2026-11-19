@@ -6,6 +6,7 @@ import { Disposable } from './common/disposable';
 import { affectsSetting } from './common/config';
 import { addNewHost, openRemoteSSHLocationWindow, openRemoteSSHWindow, openSSHConfigFile } from './commands';
 import SSHDestination from './ssh/sshDestination';
+import { t } from './common/l10n';
 
 class HostItem {
     constructor(
@@ -58,7 +59,7 @@ export class HostTreeDataProvider extends Disposable implements vscode.TreeDataP
 
     getTreeItem(element: DataTreeItem): vscode.TreeItem {
         if (element instanceof HostLocationItem) {
-            const label = path.posix.basename(element.path).replace(/\.code-workspace$/, ' (Workspace)');
+            const label = path.posix.basename(element.path).replace(/\.code-workspace$/, () => ` ${t('(Workspace)')}`);
             const treeItem = new vscode.TreeItem(label);
             treeItem.description = path.posix.dirname(element.path);
             treeItem.iconPath = new vscode.ThemeIcon('folder');

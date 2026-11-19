@@ -7,6 +7,7 @@ import * as net from 'net';
 import * as stream from 'stream';
 import { SocksClient, SocksClientOptions } from 'socks';
 import * as vscode from 'vscode';
+import { t } from './common/l10n';
 import * as ssh2 from 'ssh2';
 import { Log } from './common/logger';
 import { getSetting } from './common/config';
@@ -294,7 +295,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         const destination = SSHDestination.parseEncoded(dest);
 
         return vscode.window.withProgress({
-            title: `Setting up SSH Host ${destination.hostname}`,
+            title: t('Setting up SSH Host {0}', destination.hostname),
             location: vscode.ProgressLocation.Notification,
             cancellable: false
         }, async () => {
@@ -333,9 +334,9 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         if (context.resolveAttempt === 1) {
             this.logger.show();
 
-            const closeRemote = 'Close Remote';
-            const retry = 'Retry';
-            const result = await vscode.window.showErrorMessage(`Could not establish connection to "${destination.hostname}"`, { modal: true }, closeRemote, retry);
+            const closeRemote = t('Close Remote');
+            const retry = t('Retry');
+            const result = await vscode.window.showErrorMessage(t('Could not establish connection to "{0}"', destination.hostname), { modal: true }, closeRemote, retry);
             if (result === closeRemote) {
                 await vscode.commands.executeCommand('workbench.action.remote.close');
             } else if (result === retry) {
@@ -670,14 +671,14 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
     private watchConnection(connection: SSHConnection, hostname: string, agentForward: boolean) {
         connection.on('ssh:dropped', (_conn: SSHConnection, payload?: { err?: Error | null }) => {
             this.logger.info(`SSH connection to ${hostname} dropped${payload?.err ? `: ${payload.err.message}` : ''}`);
-            this.showStatus(`$(sync~spin) Kasugai: reconnecting to ${hostname}…`, `The SSH connection to ${hostname} dropped. Kasugai is reconnecting automatically.`);
+            this.showStatus(`$(sync~spin) ${t('Kasugai: reconnecting to {0}…', hostname)}`, t('The SSH connection to {0} dropped. Kasugai is reconnecting automatically.', hostname));
         });
         connection.on('ssh:reconnecting', (_conn: SSHConnection, payload?: { attempt: number; delay: number }) => {
             this.logger.info(`Reconnecting to ${hostname} in ${payload?.delay}ms (attempt #${payload?.attempt})`);
         });
         connection.on('ssh:reconnected', (_conn: SSHConnection, payload?: { attempt: number }) => {
             this.logger.info(`Reconnected to ${hostname} (attempt #${payload?.attempt})`);
-            this.showStatus(`$(check) Kasugai: reconnected to ${hostname}`, undefined, 5000);
+            this.showStatus(`$(check) ${t('Kasugai: reconnected to {0}', hostname)}`, undefined, 5000);
             if (agentForward && this.sshConnection === connection) {
                 // The forwarded agent socket belongs to the old session
                 this.openAgentForwardSession().then((sock) => {
@@ -689,7 +690,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
         });
         connection.on('ssh:gaveup', (_conn: SSHConnection, payload?: { attempts: number; err?: Error }) => {
             this.logger.error(`Gave up reconnecting to ${hostname} after ${payload?.attempts} attempts${payload?.err ? `: ${payload.err.message}` : ''}`);
-            this.showStatus(`$(error) Kasugai: disconnected from ${hostname}`, 'Click to reload the window and connect again.', undefined, 'workbench.action.reloadWindow');
+            this.showStatus(`$(error) ${t('Kasugai: disconnected from {0}', hostname)}`, t('Click to reload the window and connect again.'), undefined, 'workbench.action.reloadWindow');
         });
         connection.on('ssh:error', (_conn: SSHConnection, payload?: { err?: Error }) => {
             this.logger.trace(`SSH client error for ${hostname}: ${payload?.err?.message}`);
@@ -703,7 +704,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                 return;
             }
             this.statusItem = create('kasugai.connection', vscode.StatusBarAlignment.Left, 10000);
-            this.statusItem.name = 'Kasugai connection';
+            this.statusItem.name = t('Kasugai connection');
         }
         if (this.statusHideTimer) {
             clearTimeout(this.statusHideTimer);
@@ -737,15 +738,15 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
      */
     async killServerOnHost() {
         if (!isKasugaiAuthorityType(vscode.env.remoteName) || !this.sshConnection || !this.serverDataDir) {
-            void vscode.window.showInformationMessage('Kasugai: this command works in a window connected with Kasugai.');
+            void vscode.window.showInformationMessage(t('Kasugai: this command works in a window connected with Kasugai.'));
             return;
         }
         if (this.remotePlatform === 'windows') {
-            void vscode.window.showInformationMessage('Kasugai: stopping the server is not supported on Windows hosts yet.');
+            void vscode.window.showInformationMessage(t('Kasugai: stopping the server is not supported on Windows hosts yet.'));
             return;
         }
-        const confirm = 'Stop Server and Reload';
-        const answer = await vscode.window.showWarningMessage('Stop the remote server on this host? Unsaved changes in remote editors may be lost.', { modal: true }, confirm);
+        const confirm = t('Stop Server and Reload');
+        const answer = await vscode.window.showWarningMessage(t('Stop the remote server on this host? Unsaved changes in remote editors may be lost.'), { modal: true }, confirm);
         if (answer !== confirm) {
             return;
         }
@@ -884,11 +885,14 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                 }
 
                 const readFailureNote = trustStoreIncomplete
-                    ? `\n\nNote: ${knownHosts.readFailures.join(', ')} could not be read, so this host may in fact be recorded there.`
+                    ? `\n\n${t('Note: {0} could not be read, so this host may in fact be recorded there.', knownHosts.readFailures.join(', '))}`
                     : '';
-                const connect = 'Connect';
+                const question = knownHosts.userFile
+                    ? t('Connect and remember this key?')
+                    : t('Connect? UserKnownHostsFile is \'none\', so this key will not be remembered.');
+                const connect = t('Connect');
                 const answer = await vscode.window.showWarningMessage(
-                    `"${hostname}" has an unknown ${keyType} host key.\n\nFingerprint:\n${fingerprint}\n\n${knownHosts.userFile ? 'Connect and remember this key?' : 'Connect? UserKnownHostsFile is \'none\', so this key will not be remembered.'}${readFailureNote}`,
+                    `${t('"{0}" has an unknown {1} host key.', hostname, keyType)}\n\n${t('Fingerprint:')}\n${fingerprint}\n\n${question}${readFailureNote}`,
                     { modal: true },
                     connect
                 );
@@ -915,9 +919,9 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                     return false;
                 }
 
-                const update = 'Update and Connect';
+                const update = t('Update and Connect');
                 const answer = await vscode.window.showWarningMessage(
-                    `WARNING: the ${keyType} host key for "${hostname}" has changed!\n\nRecorded fingerprint:\n${recordedFingerprint}\n\nReceived fingerprint:\n${fingerprint}\n\nThis can mean the server was reinstalled — or that the connection is being intercepted.`,
+                    `${t('WARNING: the {0} host key for "{1}" has changed!', keyType, hostname)}\n\n${t('Recorded fingerprint:')}\n${recordedFingerprint}\n\n${t('Received fingerprint:')}\n${fingerprint}\n\n${t('This can mean the server was reinstalled — or that the connection is being intercepted.')}`,
                     { modal: true },
                     update
                 );
@@ -932,7 +936,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                     // about. Refuse and say which line has to go.
                     const where = surviving.map(e => `${e.file}:${e.line + 1}`).join(', ');
                     this.logger.error(`Refusing to connect to ${hostname}: the previous key is still recorded in ${where}`);
-                    void vscode.window.showErrorMessage(`"${hostname}" still has a conflicting ${keyType} host key recorded in ${where}. Remove it (ssh-keygen -R) and connect again.`);
+                    void vscode.window.showErrorMessage(t('"{0}" still has a conflicting {1} host key recorded in {2}. Remove it (ssh-keygen -R) and connect again.', hostname, keyType, where));
                     return false;
                 }
                 return true;
@@ -1170,7 +1174,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                     let passphraseRetryCount = PASSPHRASE_RETRY_COUNT;
                     while (result instanceof Error && passphraseRetryCount > 0) {
                         const passphrase = await vscode.window.showInputBox({
-                            title: `Enter passphrase for ${identityKey.filename}`,
+                            title: t('Enter passphrase for {0}', identityKey.filename),
                             password: true,
                             ignoreFocusOut: true
                         });
@@ -1201,7 +1205,7 @@ export class RemoteSSHResolver implements vscode.RemoteAuthorityResolver, vscode
                 }
 
                 const password = await vscode.window.showInputBox({
-                    title: `Enter password for ${sshUser}@${sshHostName}`,
+                    title: t('Enter password for {0}', `${sshUser}@${sshHostName}`),
                     password: true,
                     ignoreFocusOut: true
                 });

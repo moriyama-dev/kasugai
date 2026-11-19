@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as semver from 'semver';
 import * as vscode from 'vscode';
+import { t } from './common/l10n';
 import type { Log } from './common/logger';
 import { getSetting } from './common/config';
 import { REPOSITORY_URL } from './feedback';
@@ -143,7 +144,7 @@ export class Updater implements vscode.Disposable {
         if (await readInstallSource(this.context.extensionPath) === 'gallery') {
             this.logger.info(`Kasugai ${this.currentVersion} was installed from the extension store; the editor keeps it up to date`);
             if (interactive) {
-                void vscode.window.showInformationMessage(`Kasugai ${this.currentVersion} was installed from the extension store, which keeps it up to date. Check the Extensions view for new versions.`);
+                void vscode.window.showInformationMessage(t('Kasugai {0} was installed from the extension store, which keeps it up to date. Check the Extensions view for new versions.', this.currentVersion));
             }
             return;
         }
@@ -155,7 +156,7 @@ export class Updater implements vscode.Disposable {
         } catch (e) {
             this.logger.error('Checking for Kasugai updates failed', e);
             if (interactive) {
-                void vscode.window.showErrorMessage('Kasugai: could not reach GitHub to check for updates.');
+                void vscode.window.showErrorMessage(t('Kasugai: could not reach GitHub to check for updates.'));
             }
             return;
         }
@@ -163,7 +164,7 @@ export class Updater implements vscode.Disposable {
         if (!latest || !semver.gt(latest.version, this.currentVersion)) {
             this.logger.info(`Kasugai ${this.currentVersion} is up to date${latest ? ` (latest: ${latest.version})` : ''}`);
             if (interactive) {
-                void vscode.window.showInformationMessage(`Kasugai ${this.currentVersion} is up to date.`);
+                void vscode.window.showInformationMessage(t('Kasugai {0} is up to date.', this.currentVersion));
             }
             return;
         }
@@ -172,11 +173,11 @@ export class Updater implements vscode.Disposable {
             return;
         }
 
-        const update = 'Update';
-        const notes = 'Release Notes';
-        const skip = 'Skip This Version';
+        const update = t('Update');
+        const notes = t('Release Notes');
+        const skip = t('Skip This Version');
         const answer = await vscode.window.showInformationMessage(
-            `Kasugai ${latest.version} is available (you have ${this.currentVersion}).`,
+            t('Kasugai {0} is available (you have {1}).', latest.version, this.currentVersion),
             update, notes, skip
         );
         if (answer === notes) {
@@ -192,21 +193,21 @@ export class Updater implements vscode.Disposable {
         try {
             const file = await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `Downloading Kasugai ${release.version}…`,
+                title: t('Downloading Kasugai {0}…', release.version),
             }, () => this.download(release));
 
             await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(file));
             this.logger.info(`Installed Kasugai ${release.version} from ${release.vsixUrl}`);
 
-            const reload = 'Reload Window';
-            const answer = await vscode.window.showInformationMessage(`Kasugai ${release.version} is installed. Reload the window to start using it.`, reload);
+            const reload = t('Reload Window');
+            const answer = await vscode.window.showInformationMessage(t('Kasugai {0} is installed. Reload the window to start using it.', release.version), reload);
             if (answer === reload) {
                 await vscode.commands.executeCommand('workbench.action.reloadWindow');
             }
         } catch (e) {
             this.logger.error(`Updating Kasugai to ${release.version} failed`, e);
-            const open = 'Open Release Page';
-            const answer = await vscode.window.showErrorMessage(`Kasugai: the update failed (${e instanceof Error ? e.message : String(e)}). You can install it manually from the release page.`, open);
+            const open = t('Open Release Page');
+            const answer = await vscode.window.showErrorMessage(t('Kasugai: the update failed ({0}). You can install it manually from the release page.', e instanceof Error ? e.message : String(e)), open);
             if (answer === open) {
                 void vscode.env.openExternal(vscode.Uri.parse(release.notesUrl));
             }

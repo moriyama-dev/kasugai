@@ -3,6 +3,15 @@ Changelog
 
 All notable changes to this project will be documented in this file.
 
+Unreleased
+----------
+
+### Added
+
+- Japanese UI. Command names, setting descriptions, notifications, prompts and the status bar follow the display language of the editor (English or Japanese).
+- The README links to GitHub Issues near the top.
+
+
 [v0.3.0](https://github.com/moriyama-dev/kasugai/releases/tag/v0.3.0) | 2026-11-17
 -----------------------------------------------------------------------------------
 

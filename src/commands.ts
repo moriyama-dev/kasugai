@@ -4,6 +4,7 @@ import { getRemoteAuthority } from './authResolver';
 import SSHConfiguration, { getSSHConfigPath } from './ssh/sshConfig';
 import { exists as fileExists } from './common/files';
 import SSHDestination from './ssh/sshDestination';
+import { t } from './common/l10n';
 
 export async function promptOpenRemoteSSHWindow(reuseWindow: boolean) {
     const host = await promptForHost();
@@ -31,7 +32,7 @@ async function promptForHost(): Promise<string | undefined> {
 
     if (!configuredHosts.length) {
         return vscode.window.showInputBox({
-            title: 'Enter [user@]hostname[:port]'
+            title: t('Enter [user@]hostname[:port]')
         });
     }
 
@@ -39,14 +40,14 @@ async function promptForHost(): Promise<string | undefined> {
 
     return new Promise<string | undefined>(resolve => {
         const quickPick = vscode.window.createQuickPick();
-        quickPick.title = 'Connect to Host';
-        quickPick.placeholder = 'Select a configured host, or enter [user@]hostname[:port]';
+        quickPick.title = t('Connect to Host');
+        quickPick.placeholder = t('Select a configured host, or enter [user@]hostname[:port]');
         quickPick.items = hostItems;
 
         quickPick.onDidChangeValue(value => {
             const typed = value.trim();
             quickPick.items = typed && !configuredHosts.includes(typed)
-                ? [{ label: typed, description: 'Connect to this host' }, ...hostItems]
+                ? [{ label: typed, description: t('Connect to this host') }, ...hostItems]
                 : hostItems;
         });
 

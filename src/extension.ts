@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Log } from './common/logger';
+import { t } from './common/l10n';
 import { RemoteSSHResolver, REMOTE_SSH_AUTHORITY, COMPAT_SSH_AUTHORITY, isSshRemoteHandled } from './authResolver';
 import { openSSHConfigFile, promptOpenRemoteSSHWindow } from './commands';
 import { HostTreeDataProvider } from './hostTreeView';
@@ -40,7 +41,7 @@ export async function activate(context: vscode.ExtensionContext) {
             // registered it first. Only one extension can own an authority.
             logger.error(`Kasugai cannot resolve '${COMPAT_SSH_AUTHORITY}': another extension already does`, e);
             void vscode.window.showWarningMessage(
-                `Kasugai: "kasugai.handleSshRemote" is on, but another SSH remote extension already handles "${COMPAT_SSH_AUTHORITY}" windows. Disable that extension, or turn the setting off.`
+                t('Kasugai: "kasugai.handleSshRemote" is on, but another SSH remote extension already handles "{0}" windows. Disable that extension, or turn the setting off.', COMPAT_SSH_AUTHORITY)
             );
         }
     }
