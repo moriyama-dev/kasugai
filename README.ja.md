@@ -8,6 +8,8 @@
 
 [English README](README.md)
 
+不具合や要望があれば、[GitHub の Issues](https://github.com/moriyama-dev/kasugai/issues) か、Kasugai のパネルにあるフィードバックの入力欄からお知らせください。
+
 ## 特徴
 
 ### 一番は安定性
@@ -19,7 +21,7 @@
 - **エディターを落とさない**：転送中の通信エラーや `ProxyCommand` の失敗が起きても、拡張機能を動かす処理（拡張ホスト）が止まらないようにしています。
 - **状態が見える**：ステータスバーに「再接続中」「再接続しました」「切断」を表示します。ログには、切断と再接続の試行のすべてと、各手順にかかった時間を記録します。
 - **インターネットにつながらないサーバーでも使える**：サーバー側でダウンロードできないときは、手元でダウンロードして SSH で送り込みます（`kasugai.localServerDownload`）。
-- **固まったサーバーを直せる**：`Kasugai: Kill Server on Host...` で、リモートのサーバーを止めて新しく起動し直します。
+- **固まったサーバーを直せる**：**Kasugai: ホストのサーバーを停止...**（Kill Server on Host...）で、リモートのサーバーを止めて新しく起動し直します。
 
 ### 次に速さ
 
@@ -59,11 +61,11 @@ $u = (Invoke-RestMethod https://api.github.com/repos/moriyama-dev/kasugai/releas
 
 Open VSX から入れた場合は、ほかの拡張機能と同じく VSCodium が更新します。
 
-.vsix から入れた場合、エディターは更新してくれません。そこで Kasugai が自分で更新を確認します。1日に1回 [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) を確認し、新しい版があれば通知します。「Update」を押すと、.vsix をダウンロードし、リリースに付いている `SHA256SUMS` と照らし合わせて壊れていないことを確かめてから、インストールします。そのあとウィンドウを再読み込みしてください。**Kasugai: Check for Updates...** で手動でも確認できます。確認を止めるには `"kasugai.updateCheck": "off"` にします。
+.vsix から入れた場合、エディターは更新してくれません。そこで Kasugai が自分で更新を確認します。1日に1回 [GitHub Releases](https://github.com/moriyama-dev/kasugai/releases) を確認し、新しい版があれば通知します。「更新」（Update）を押すと、.vsix をダウンロードし、リリースに付いている `SHA256SUMS` と照らし合わせて壊れていないことを確かめてから、インストールします。そのあとウィンドウを再読み込みしてください。**Kasugai: 更新を確認...**（Check for Updates...）で手動でも確認できます。確認を止めるには `"kasugai.updateCheck": "off"` にします。
 
 ### 最初に一度だけ必要な設定
 
-リモートのウィンドウを開くには、エディターの特別な API が必要です。VSCodium と VS Code は、`argv.json` に書かれた拡張機能にだけこの API を許可します。**Kasugai を初めて起動すると、この設定を自動で書き込むかどうかを聞いてきます。**「Enable Kasugai」を選んだら、エディターを一度終了して起動し直してください（ウィンドウの再読み込みでは足りません）。
+リモートのウィンドウを開くには、エディターの特別な API が必要です。VSCodium と VS Code は、`argv.json` に書かれた拡張機能にだけこの API を許可します。**Kasugai を初めて起動すると、この設定を自動で書き込むかどうかを聞いてきます。**「Kasugai を有効にする」（Enable Kasugai）を選んだら、エディターを一度終了して起動し直してください（ウィンドウの再読み込みでは足りません）。
 
 手作業で設定する場合は、**Preferences: Configure Runtime Arguments** を実行し、次を追加してから再起動します。
 
@@ -75,12 +77,14 @@ Open VSX から入れた場合は、ほかの拡張機能と同じく VSCodium �
 
 ## 使い方
 
-- **Kasugai: Connect to Host...**（左下のリモートボタンからも選べます）で、リモートのウィンドウを開きます。ホストの一覧は `~/.ssh/config` から読み込みます。
-- 左端の列（アクティビティバー）の **Kasugai のアイコン**を押すと、ホストと最近開いたフォルダーの一覧（SSH Targets）と、フィードバックの入力欄が開きます。
-- **Kasugai: Show Log**：接続のログを表示します。
-- **Kasugai: Kill Server on Host...**：固まったリモートのサーバーを起動し直します。
-- **Kasugai: Check for Updates...**：GitHub に新しい版がないか確認します。
-- **Kasugai: Send Feedback...**：フィードバックの入力欄を開きます。**Kasugai: Report an Issue** / **Kasugai: Open on GitHub** は GitHub を直接開きます。
+コマンドやボタンの名前は、画面が英語のときはカッコ内の英語で表示されます。
+
+- **Kasugai: ホストに接続...**（Connect to Host...。左下のリモートボタンからも選べます）で、リモートのウィンドウを開きます。ホストの一覧は `~/.ssh/config` から読み込みます。
+- 左端の列（アクティビティバー）の **Kasugai のアイコン**を押すと、ホストと最近開いたフォルダーの一覧（**SSH ホスト**、英語では SSH Targets）と、**フィードバック**（Feedback）の入力欄が開きます。
+- **Kasugai: ログを表示**（Show Log）：接続のログを表示します。
+- **Kasugai: ホストのサーバーを停止...**（Kill Server on Host...）：固まったリモートのサーバーを起動し直します。
+- **Kasugai: 更新を確認...**（Check for Updates...）：GitHub に新しい版がないか確認します。
+- **Kasugai: フィードバックを送る...**（Send Feedback...）：フィードバックの入力欄を開きます。**Kasugai: 問題を報告**（Report an Issue）と **Kasugai: GitHub で開く**（Open on GitHub）は GitHub を直接開きます。
 
 Kasugai は独自のリモートの種類（`kasugai-ssh`）を使います。ほかの SSH リモート拡張機能と一緒に入れても、ぶつかりません。
 
@@ -108,8 +112,8 @@ Kasugai は、オープンソースの VSCodium のリモートサーバーを�
 
 ## 困ったとき
 
-1. **Kasugai: Show Log** でログを確認します。
-2. 長く切れていたあとに「サーバーにつながらない」と出たら、**Kasugai: Kill Server on Host...** を実行します。
+1. **Kasugai: ログを表示**（Show Log）でログを確認します。
+2. 長く切れていたあとに「サーバーにつながらない」と出たら、**Kasugai: ホストのサーバーを停止...**（Kill Server on Host...）を実行します。
 3. サーバーがインターネットにつながらない環境では、`kasugai.localServerDownload` を `always` にします。
 4. サーバーの `sshd_config` で `AllowTcpForwarding yes` になっているか確認します。
 

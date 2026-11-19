@@ -8,6 +8,8 @@ A *kasugai* (鎹) is the iron staple Japanese carpenters drive across two timber
 
 [日本語の説明はこちら](README.ja.md)
 
+Found a problem or have an idea? [Open an issue on GitHub](https://github.com/moriyama-dev/kasugai/issues), or use the *Feedback* form in the Kasugai panel.
+
 ## Why Kasugai
 
 ### Stability first
