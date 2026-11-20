@@ -15,7 +15,7 @@ const decodeBody = (url: string) => decodeURIComponent(new URL(url).searchParams
 
 describe('maskPrivate', () => {
     it('masks Tailscale names, IP addresses and e-mail addresses', () => {
-        const masked = maskPrivate('Connecting to dev-on-github.tail24ad8b.ts.net (100.101.102.103) as takumi.webservice@gmail.com');
+        const masked = maskPrivate('Connecting to dev-on-github.example.ts.net (100.101.102.103) as user@example.com');
         expect(masked).toBe('Connecting to <host> (<ip>) as <email>');
     });
 
@@ -30,19 +30,19 @@ describe('maskPrivate', () => {
 
     it('masks home directories, user@host, fingerprints and connection tokens', () => {
         const text = [
-            'Trying publickey authentication: /home/yoshi/.ssh/id_ed25519 ssh-ed25519 SHA256:abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG',
-            'yoshi@vm-base-server: connectionToken==0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0==',
+            'Trying publickey authentication: /home/alice/.ssh/id_ed25519 ssh-ed25519 SHA256:abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG',
+            'alice@build-server: connectionToken==0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0==',
             'password: hunter22',
         ].join('\n');
-        const masked = maskPrivate(text, ['vm-base-server']);
-        expect(masked).not.toMatch(/yoshi|vm-base-server|hunter22|0f1e2d3c|abcdefghij/);
+        const masked = maskPrivate(text, ['build-server']);
+        expect(masked).not.toMatch(/alice|build-server|hunter22|0f1e2d3c|abcdefghij/);
         expect(masked).toContain('/home/<user>/.ssh/id_ed25519');
         expect(masked).toContain('SHA256:<fingerprint>');
         expect(masked).toContain('connectionToken==<token>');
     });
 
     it('masks the local user name with maskForReport', () => {
-        expect(maskForReport('started by yoshi on raspberrypi', ['raspberrypi'], 'yoshi')).toBe('started by <user> on <host>');
+        expect(maskForReport('started by alice on raspberrypi', ['raspberrypi'], 'alice')).toBe('started by <user> on <host>');
     });
 });
 
